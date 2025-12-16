@@ -1,6 +1,6 @@
 ---
 description: Review all generated artifacts and validate completeness and quality.
-displayName: Review
+displayName: review
 icon: ✅
 ---
 

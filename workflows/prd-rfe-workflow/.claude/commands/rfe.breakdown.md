@@ -1,6 +1,6 @@
 ---
 description: Break down the PRD into actionable Request for Enhancement (RFE) items.
-displayName: RFE Breakdown
+displayName: rfe.breakdown
 icon: 🔨
 ---
 

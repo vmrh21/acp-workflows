@@ -1,6 +1,6 @@
 ---
 description: Gather and document detailed product requirements.
-displayName: Requirements
+displayName: prd.requirements
 icon: 📋
 ---
 

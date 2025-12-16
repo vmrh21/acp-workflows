@@ -1,6 +1,6 @@
 ---
 description: Conduct product discovery to understand the problem space and user needs.
-displayName: Discover
+displayName: prd.discover
 icon: 🔍
 ---
 

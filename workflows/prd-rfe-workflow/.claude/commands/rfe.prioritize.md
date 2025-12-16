@@ -1,6 +1,6 @@
 ---
 description: Prioritize RFEs using various prioritization frameworks and create an implementation roadmap.
-displayName: Prioritize RFEs
+displayName: rfe.prioritize
 icon: 🎯
 ---
 

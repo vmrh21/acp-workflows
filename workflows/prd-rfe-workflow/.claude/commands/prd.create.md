@@ -1,6 +1,6 @@
 ---
 description: Create a comprehensive Product Requirements Document (PRD) from discovery and requirements.
-displayName: Create PRD
+displayName: prd.create
 icon: 📄
 ---
 
