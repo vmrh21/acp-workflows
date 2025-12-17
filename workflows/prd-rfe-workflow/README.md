@@ -423,34 +423,6 @@ Adjust the workflow for different industries:
 - **Healthcare**: Include HIPAA and regulatory compliance
 - **Financial Services**: Add security, audit, and compliance sections
 
-## Troubleshooting
-
-### Common Issues
-
-**"The PRD is too vague or high-level"**
-- Run `/prd.requirements` again to gather more detailed requirements
-- Engage Bailey (Business Analyst) for requirements elicitation
-- Ask clarifying questions to stakeholders
-- Document assumptions and validate with users
-
-**"RFEs are too large or too small"**
-- Review RFE breakdown principles in `/rfe.breakdown`
-- Engage Riley (Product Owner) for proper decomposition
-- Consider dependencies and team capacity
-- Aim for RFEs in the 2-10 day range
-
-**"Priorities are unclear or conflicting"**
-- Revisit business goals and success metrics in PRD
-- Use multiple prioritization frameworks to triangulate
-- Engage stakeholders to resolve conflicts
-- Document trade-offs and rationale
-
-**"Requirements aren't traceable to RFEs"**
-- Run `/review` to generate traceability matrix
-- Fill gaps by creating missing RFEs
-- Consolidate or split RFEs as needed
-- Update PRD if requirements changed
-
 ## Integration with ACP
 
 This workflow integrates seamlessly with the Ambient Code Platform:
