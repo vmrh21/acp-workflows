@@ -1,16 +1,8 @@
 # PRD & RFE Creation Workflow for Ambient Code Platform
 
-A comprehensive workflow for creating Product Requirements Documents (PRDs) and systematically breaking them down into actionable Request for Enhancement (RFE) items. Guides product teams through the complete product definition lifecycle from discovery to implementation roadmap.
+A comprehensive workflow for creating Product Requirements Documents (PRDs) and systematically breaking them down into actionable Request for Enhancement (RFE) items. 
 
-## Overview
-
-This workflow provides a structured approach to product requirements and feature planning:
-- **Discovery-Driven Process**: Six-phase methodology from discovery to prioritization
-- **Requirements Excellence**: Emphasizes clear, testable, and measurable requirements
-- **Structured Breakdown**: Systematic decomposition of PRDs into implementable RFEs
-- **Agent Collaboration**: Leverages specialized product and technical agents
-
-## Workflow Diagram
+## Workflow
 
 ```mermaid
 flowchart LR
@@ -167,121 +159,24 @@ flowchart LR
 
 ---
 
+## Artifacts Generated
 
-### Workflow Phases
+All workflow artifacts are organized in the `artifacts/` directory:
 
-The PRD-RFE Workflow follows a systematic 6-phase approach:
-
-#### Phase 1: Discovery (`/prd.discover`)
-**Purpose**: Conduct product discovery to understand the problem space and user needs
-
-- Define the problem statement
-- Research target users and their pain points
-- Analyze competitive landscape and market opportunity
-- Propose high-level solution concepts
-- Define success metrics
-- Document open questions and assumptions
-
-**Output**: `artifacts/discovery.md`
-
-**When to use**: Start here when exploring a new product idea or feature concept
-
-**Agent Recommendation**: Invoke **Quinn (Product Strategist)** for strategic product discovery, market analysis, and vision development
-
-#### Phase 2: Requirements (`/prd.requirements`)
-**Purpose**: Gather and document detailed product requirements
-
-- Transform user needs into specific requirements
-- Write user stories with acceptance criteria
-- Define functional and non-functional requirements
-- Document constraints and dependencies
-- Prioritize requirements (MoSCoW)
-- Identify what's in scope and out of scope
-
-**Output**: `artifacts/requirements.md`
-
-**When to use**: After discovery phase, or jump here if you have a well-defined problem
-
-**Agent Recommendation**: Invoke **Bailey (Business Analyst)** for requirements elicitation, acceptance criteria definition, and stakeholder alignment
-
-#### Phase 3: Create PRD (`/prd.create`)
-**Purpose**: Create a comprehensive Product Requirements Document
-
-- Generate complete PRD from discovery and requirements
-- Write executive summary and product vision
-- Document goals, success metrics, and KPIs
-- Define target users and personas
-- Create detailed user stories and use cases
-- Specify functional and non-functional requirements
-- Define scope, assumptions, dependencies, and risks
-- Validate PRD quality and completeness
-
-**Output**:
-- `artifacts/prd.md`
-- `artifacts/prd-checklist.md`
-
-**When to use**: After requirements gathering phase
-
-**Agent Recommendations**:
-- **Quinn (Product Strategist)** for strategic sections (vision, market positioning)
-- **Bailey (Business Analyst)** for requirements sections
-- **Morgan (Technical Writer)** for documentation quality review
-
-#### Phase 4: RFE Breakdown (`/rfe.breakdown`)
-**Purpose**: Break down the PRD into actionable Request for Enhancement items
-
-- Analyze PRD for discrete, implementable units of work
-- Create RFE master list with overview and summary
-- Generate individual RFE documents with detailed specifications
-- Define acceptance criteria for each RFE
-- Identify dependencies between RFEs
-- Size RFEs (Small/Medium/Large/XLarge)
-- Create dependency graph and sequencing plan
-- Validate completeness and traceability
-
-**Output**:
-- `artifacts/rfes.md` (Master RFE list)
-- `artifacts/rfe-tasks/RFE-XXX-*.md` (Individual RFE documents)
-
-**When to use**: After PRD creation and approval
-
-**Agent Recommendation**: Invoke **Riley (Product Owner)** for breaking PRDs into RFEs, defining acceptance criteria, and managing dependencies
-
-#### Phase 5: Prioritization (`/rfe.prioritize`)
-**Purpose**: Prioritize RFEs and create implementation roadmap
-
-- Apply prioritization framework (MoSCoW, RICE, Value vs Effort)
-- Score and rank RFEs based on business value
-- Create implementation roadmap with phases/releases
-- Define dependency-driven sequence
-- Perform risk-adjusted prioritization
-- Map RFEs to business goals and user needs
-- Generate recommendations for implementation order
-
-**Output**:
-- `artifacts/prioritization.md`
-- `artifacts/roadmap-visual.md` (optional)
-
-**When to use**: After RFE breakdown is complete
-
-**Agent Recommendation**: Invoke **Riley (Product Owner)** for prioritization strategy and roadmap planning
-
-#### Phase 6: Review (`/review`)
-**Purpose**: Review all artifacts and validate completeness and quality
-
-- Scan all generated artifacts for completeness
-- Perform quality assessment (PRD, RFEs, prioritization)
-- Create traceability matrix (PRD requirements → RFEs)
-- Calculate quality scores and metrics
-- Identify issues, gaps, and recommendations
-- Assess readiness for stakeholder review and implementation
-- Generate comprehensive review report
-
-**Output**: `artifacts/review-report.md`
-
-**When to use**: After all phases are complete, before stakeholder review
-
-**Agent Recommendation**: Invoke **Morgan (Technical Writer)** for documentation quality review and clarity improvements
+```
+artifacts/
+├── discovery.md                  # Product discovery document
+├── requirements.md               # Detailed requirements
+├── prd.md                        # Product Requirements Document
+├── prd-checklist.md              # PRD quality checklist
+├── rfes.md                       # RFE master list
+├── rfe-tasks/                    # Individual RFE documents
+│   ├── RFE-001-feature-name.md
+│   ├── RFE-002-feature-name.md
+│   └── ...
+├── roadmap-visual.md             # Visual roadmap (optional)
+└── review-report.md              # Quality review report
+```
 
 ## Getting Started
 
@@ -336,26 +231,6 @@ Workflow: Jump to /rfe.breakdown to decompose into RFEs
 
 Agent collaboration is automatically triggered when you use the workflow commands—specialized agents are orchestrated as needed to ensure high-quality product documentation. Additionally, you can bring any individual agent into a conversation at any point by typing the '@' symbol and selecting an agent by name.
 
-
-## Artifacts Generated
-
-All workflow artifacts are organized in the `artifacts/` directory:
-
-```
-artifacts/
-├── discovery.md                  # Product discovery document
-├── requirements.md               # Detailed requirements
-├── prd.md                        # Product Requirements Document
-├── prd-checklist.md              # PRD quality checklist
-├── rfes.md                       # RFE master list
-├── rfe-tasks/                    # Individual RFE documents
-│   ├── RFE-001-feature-name.md
-│   ├── RFE-002-feature-name.md
-│   └── ...
-├── prioritization.md             # Prioritization and roadmap
-├── roadmap-visual.md             # Visual roadmap (optional)
-└── review-report.md              # Quality review report
-```
 
 ## Best Practices
 
