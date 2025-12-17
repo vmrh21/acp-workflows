@@ -88,11 +88,9 @@ flowchart LR
 ### 4. `prd.revise` - PRD Revision
 **Purpose**: Revise PRD based on review feedback
 
-**Recommended Agents**:
+**Collaborating Agents**:
 - **@parker-product_manager.md** - Business value adjustments, strategic refinements
 - **@terry-technical_writer.md** - Clarity improvements, documentation structure
-- **@casey-content_strategist.md** (bullpen) - Content structure and taxonomy refinements
-- **@ryan-ux_researcher.md** - Add missing research citations, strengthen evidence base
 
 **Key Actions**:
 - Address review feedback and gaps
@@ -122,7 +120,7 @@ flowchart LR
 ### 6. `rfe.review` - RFE Review
 **Purpose**: Review RFEs for technical feasibility, testability, and team capacity
 
-**Recommended Agents**:
+**Collaborating Agents**:
 - **@stella-staff_engineer.md** - Technical feasibility, implementation complexity, risk assessment
 - **@archie-architect.md** (bullpen) - Architecture alignment, system-level implications
 - **@neil-test_engineer.md** (bullpen) - Testing requirements, automation strategy, cross-team impact
@@ -140,7 +138,7 @@ flowchart LR
 ### 7. `rfe.revise` - RFE Revision
 **Purpose**: Revise RFEs based on technical and capacity feedback
 
-**Recommended Agents**:
+**Collaborating Agents**:
 - **@olivia-product_owner.md** (bullpen) - Story refinement, scope adjustments
 - **@stella-staff_engineer.md** - Technical design adjustments, complexity reduction
 - **@neil-test_engineer.md** (bullpen) - Test requirements clarification, testability improvements
@@ -156,7 +154,7 @@ flowchart LR
 ### 8. `rfe.submit` - RFE Submission
 **Purpose**: Submit approved RFEs for implementation planning and team assignment
 
-**Recommended Agents**:
+**Collaborating Agents**:
 - **@olivia-product_owner.md** (bullpen) - Backlog prioritization, sprint planning
 - **@emma-engineering_manager.md** (bullpen) - Team assignment, capacity allocation, delivery coordination
 - **@parker-product_manager.md** - Roadmap alignment, stakeholder communication
@@ -169,30 +167,6 @@ flowchart LR
 
 ---
 
-## What's Included
-
-### Directory Structure
-
-```
-prd-rfe-workflow/
-├── .ambient/
-│   └── ambient.json           # Workflow configuration
-├── .claude/
-│   ├── agents/                # Specialized agent personas
-│   │   ├── quinn-product_strategist.md    # Product vision & strategy
-│   │   ├── bailey-business_analyst.md     # Requirements analysis
-│   │   ├── riley-product_owner.md         # RFE breakdown & prioritization
-│   │   └── morgan-technical_writer.md     # Documentation quality
-│   └── commands/              # Workflow phase commands
-│       ├── prd.discover.md    # Phase 1: Product discovery
-│       ├── prd.requirements.md # Phase 2: Requirements gathering
-│       ├── prd.create.md      # Phase 3: PRD creation
-│       ├── rfe.breakdown.md   # Phase 4: RFE decomposition
-│       ├── rfe.prioritize.md  # Phase 5: Prioritization & roadmap
-│       └── review.md          # Phase 6: Quality review
-├── artifacts/                 # Generated artifacts (created during workflow)
-└── README.md                  # This file
-```
 
 ### Workflow Phases
 
@@ -360,81 +334,8 @@ Workflow: Jump to /rfe.breakdown to decompose into RFEs
 
 ## Agent Orchestration
 
-This workflow leverages specialized agents to ensure high-quality product documentation:
+Agent collaboration is automatically triggered when you use the workflow commands—specialized agents are orchestrated as needed to ensure high-quality product documentation. Additionally, you can bring any individual agent into a conversation at any point by typing the '@' symbol and selecting an agent by name.
 
-### Quinn - Product Strategist
-**Product Vision, Strategy, and Discovery**
-
-Quinn brings strategic product thinking and market expertise to the workflow.
-
-**Quinn's Role:**
-- Product discovery and problem validation
-- Competitive analysis and market research
-- Strategic PRD sections (vision, goals, positioning)
-- Business outcome definition
-- Value proposition development
-
-**When to Engage:**
-- Product discovery phase
-- Strategic PRD sections
-- Market opportunity analysis
-- Product vision and goals definition
-
-### Bailey - Business Analyst
-**Requirements Elicitation and Documentation**
-
-Bailey specializes in gathering, analyzing, and documenting detailed requirements.
-
-**Bailey's Role:**
-- Requirements gathering and analysis
-- User story writing with acceptance criteria
-- Process and workflow analysis
-- Requirements traceability
-- Gap and consistency analysis
-
-**When to Engage:**
-- Requirements gathering phase
-- Detailed PRD requirements sections
-- Acceptance criteria definition
-- Requirements validation
-- Traceability analysis
-
-### Riley - Product Owner
-**Backlog Management and Prioritization**
-
-Riley excels at breaking down work and prioritizing for maximum value delivery.
-
-**Riley's Role:**
-- Breaking PRDs into implementable RFEs
-- Defining RFE acceptance criteria
-- Dependency identification and management
-- Prioritization (MoSCoW, RICE, Value vs Effort)
-- Roadmap and release planning
-
-**When to Engage:**
-- RFE breakdown phase
-- Prioritization and roadmap planning
-- Dependency analysis
-- Scope negotiation
-- MVP definition
-
-### Morgan - Technical Writer
-**Documentation Quality and Clarity**
-
-Morgan ensures all documentation is clear, consistent, and professional.
-
-**Morgan's Role:**
-- PRD quality review and editing
-- Documentation structure and flow
-- Clarity and consistency improvements
-- Terminology management
-- Readability optimization
-
-**When to Engage:**
-- PRD review and editing
-- Documentation quality checks
-- Improving clarity and structure
-- Final review phase
 
 ## Artifacts Generated
 
