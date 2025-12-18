@@ -5,7 +5,8 @@ flowchart LR
     UF[(User-uploaded files)] -.-> A
     CODE[(Code)] -.-> A
     
-    A[prd.discover] --> review_loop
+    A[prd.discover] --> REQ[prd.requirements]
+    REQ --> review_loop
     
     subgraph review_loop["PRD Review Loop"]
         B[prd.create] --> C[prd.review]

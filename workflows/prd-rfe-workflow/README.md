@@ -2,11 +2,13 @@
 
 A comprehensive workflow for creating Product Requirements Documents (PRDs) and systematically breaking them down into actionable Request for Enhancement (RFE) items. 
 
-## Who this workflow is for
+## Who this is for
 
-This workflow is designed for Product Managers who want to leverage agents in the creation of comprehensive, well-defined, data-informed PRDs and RFEs. The goal is to generate PRDs and RFEs that are more likely to be accepted by a Senior Engineer or Architect for implementation.
+**Product Managers** who want to leverage agents in the creation of comprehensive, well-defined, data-informed PRDs and RFEs. The goal is to generate PRDs and RFEs that are more likely to be accepted by a Senior Engineer or Architect for implementation.
 
 ## Workflow
+
+The creation of a PRD and subsequent refinements of RFEs associated with that PRD follow a general workflow that starts with discovery, goes through two refinement loops, and utimately exports RFE definitions to Jira. The workflow is accessible through commands (ex. prd.create) which enable the user to keep the agents on track. Some commands have prerequisites. For example `/rfe.breakdown` which breaks a PRD down into RFEs, requires the existance of a PRD document. 
 
 ```mermaid
 flowchart LR
@@ -15,7 +17,8 @@ flowchart LR
     UF[(User-uploaded files)] -.-> A
     CODE[(Code)] -.-> A
     
-    A[prd.discover] --> review_loop
+    A[prd.discover] --> REQ[prd.requirements]
+    REQ --> review_loop
     
     subgraph review_loop["PRD Review Loop"]
         B[prd.create] --> C[prd.review]
@@ -65,7 +68,26 @@ flowchart LR
 
 ---
 
-### 2. `prd.create` - PRD Creation
+### 2. `prd.requirements` - Requirements Gathering
+**Purpose**: Gather and document detailed product requirements based on discovery findings
+
+**Collaborating Agents**:
+- **@parker-product_manager.md** - Business requirements, success criteria, constraints, and prioritization
+- **@ryan-ux_researcher.md** - User requirements grounded in research studies, user stories with evidence
+- **@olivia-product_owner.md** (bullpen) - User story structure, acceptance criteria definition, requirement prioritization (MoSCoW)
+- **@aria-ux_architect.md** (bullpen) - User flows, information architecture considerations
+
+**Key Actions**:
+- Transform discovery insights into specific, testable requirements
+- Write user stories with clear acceptance criteria
+- Define functional and non-functional requirements
+- Prioritize requirements using MoSCoW method
+- Document constraints, dependencies, and assumptions
+- Clearly define scope and out-of-scope items
+
+---
+
+### 3. `prd.create` - PRD Creation
 **Purpose**: Create a comprehensive Product Requirements Document
 
 **Collaborating Agents**:
@@ -82,7 +104,7 @@ flowchart LR
 
 ---
 
-### 3. `prd.review` - PRD Review
+### 4. `prd.review` - PRD Review
 **Purpose**: Review PRD for quality, completeness, and feasibility; determine if prototyping is needed
 
 **Collaborating Agents**:
@@ -99,7 +121,7 @@ flowchart LR
 
 ---
 
-### 4. `prd.revise` - PRD Revision
+### 5. `prd.revise` - PRD Revision
 **Purpose**: Revise PRD based on review feedback
 
 **Collaborating Agents**:
@@ -114,10 +136,10 @@ flowchart LR
 
 ---
 
-### 5. `rfe.breakdown` - RFE Breakdown
+### 6. `rfe.breakdown` - RFE Breakdown
 **Purpose**: Break down PRD into actionable Request for Enhancement items
 
-**Recommended Agents**:
+**Collaborating Agents**:
 - **@olivia-product_owner.md** (bullpen) - Backlog management, story decomposition, acceptance criteria
 - **@stella-staff_engineer.md** - Technical scoping, effort estimation, complexity assessment
 - **@archie-architect.md** (bullpen) - System design, dependencies, architectural coordination
@@ -131,7 +153,7 @@ flowchart LR
 
 ---
 
-### 6. `rfe.review` - RFE Review
+### 7. `rfe.review` - RFE Review
 **Purpose**: Review RFEs for technical feasibility, testability, and team capacity
 
 **Collaborating Agents**:
@@ -149,7 +171,7 @@ flowchart LR
 
 ---
 
-### 7. `rfe.revise` - RFE Revision
+### 8. `rfe.revise` - RFE Revision
 **Purpose**: Revise RFEs based on technical and capacity feedback
 
 **Collaborating Agents**:
@@ -165,7 +187,7 @@ flowchart LR
 
 ---
 
-### 8. `rfe.submit` - RFE Submission
+### 9. `rfe.submit` - RFE Submission
 **Purpose**: Submit approved RFEs for implementation planning and team assignment
 
 **Collaborating Agents**:
