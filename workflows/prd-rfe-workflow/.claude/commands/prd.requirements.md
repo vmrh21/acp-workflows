@@ -16,6 +16,17 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 This command gathers detailed requirements based on the discovery phase. It should be run after `/prd.discover`.
 
+**IMPORTANT: Agent Collaboration**
+
+You MUST proactively invoke the following collaborating agents to ensure comprehensive requirements gathering:
+
+1. **@parker-product_manager.md** - For business requirements, success criteria, constraints, and prioritization
+2. **@ryan-ux_researcher.md** - CRITICAL: For user requirements grounded in research studies. This agent MUST access the "All UXR Reports" folder via UXR MCP to ensure all user stories are evidence-based with research citations.
+3. **@olivia-product_owner.md** (from bullpen) - For user story structure, acceptance criteria definition, and requirement prioritization using MoSCoW method
+4. **@aria-ux_architect.md** (from bullpen) - For user flows and information architecture considerations
+
+Invoke these agents at the start of the requirements gathering process. Work collaboratively with them to create well-structured, research-informed requirements.
+
 1. **Load Context**:
    - Read `artifacts/discovery.md` if it exists
    - Consider user input from $ARGUMENTS

@@ -16,6 +16,17 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 This command breaks down the PRD into discrete RFE items. It should be run after `/prd.create`.
 
+**IMPORTANT: Agent Collaboration**
+
+You MUST proactively invoke the following collaborating agents to ensure comprehensive RFE breakdown:
+
+1. **@olivia-product_owner.md** (from bullpen) - For backlog management, story decomposition, and acceptance criteria definition
+2. **@stella-staff_engineer.md** - For technical scoping, effort estimation, and complexity assessment
+3. **@archie-architect.md** (from bullpen) - For system design, dependencies, and architectural coordination
+4. **@neil-test_engineer.md** (from bullpen) - For testability assessment, automation requirements, and cross-component impact analysis
+
+Invoke these agents at the start of the breakdown process. Work collaboratively with them to decompose the PRD into well-scoped, technically feasible RFEs with proper sizing and dependencies.
+
 1. **Load Context**:
    - Read `artifacts/prd.md`
    - Understand functional requirements, user stories, and features

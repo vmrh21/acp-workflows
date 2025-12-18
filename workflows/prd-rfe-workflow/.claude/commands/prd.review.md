@@ -16,6 +16,17 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 This command reviews PRD artifacts (discovery, requirements, and PRD documents) for completeness across critical product discovery categories.
 
+**IMPORTANT: Agent Collaboration**
+
+You MUST proactively invoke the following collaborating agents to ensure comprehensive PRD review:
+
+1. **@steve-ux_designer.md** - For UX assessment and to determine if a prototype is needed for validation
+2. **@aria-ux_architect.md** (from bullpen) - For holistic UX strategy validation and journey alignment
+3. **@olivia-product_owner.md** (from bullpen) - For story readiness and acceptance criteria validation
+4. **@archie-architect.md** (from bullpen) - For technical feasibility and architecture alignment
+
+Invoke these agents at the start of the review process. Work collaboratively with them to assess quality, completeness, and feasibility from multiple perspectives.
+
 1. **Load PRD Artifacts**:
    - Read `artifacts/discovery.md` (if exists)
    - Read `artifacts/requirements.md` (if exists)

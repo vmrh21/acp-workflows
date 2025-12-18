@@ -16,6 +16,18 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 This command reviews RFE artifacts (RFE master list and individual RFE documents) for technical feasibility, implementation readiness, and quality of technical planning.
 
+**IMPORTANT: Agent Collaboration**
+
+You MUST proactively invoke the following collaborating agents to ensure comprehensive RFE review:
+
+1. **@stella-staff_engineer.md** - For technical feasibility, implementation complexity, and risk assessment
+2. **@archie-architect.md** (from bullpen) - For architecture alignment and system-level implications
+3. **@neil-test_engineer.md** (from bullpen) - For testing requirements, automation strategy, and cross-team impact analysis
+4. **@emma-engineering_manager.md** (from bullpen) - For team capacity planning and delivery coordination
+5. **@olivia-product_owner.md** (from bullpen) - For acceptance criteria validation and scope negotiation
+
+Invoke these agents at the start of the review process. Work collaboratively with them to validate technical approach, assess testability, check capacity, and ensure architecture alignment.
+
 1. **Load RFE Artifacts**:
    - Read `artifacts/rfes.md` (required)
    - Read individual RFE files from `artifacts/rfe-tasks/*.md`

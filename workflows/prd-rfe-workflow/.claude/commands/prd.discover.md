@@ -16,6 +16,16 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 The text the user typed after `/prd.discover` in the triggering message is the initial problem or product idea. Use this to guide the discovery process.
 
+**IMPORTANT: Agent Collaboration**
+
+You MUST proactively invoke the following collaborating agents to ensure comprehensive discovery:
+
+1. **@parker-product_manager.md** - For market strategy, competitive analysis, and opportunity quantification
+2. **@ryan-ux_researcher.md** - CRITICAL: For user insights from research studies. This agent MUST access the "All UXR Reports" folder via UXR MCP to ground requirements in available research. Every requirement should be research-informed with citations.
+3. **@aria-ux_architect.md** (from bullpen) - For user journey mapping and ecosystem-level UX strategy
+
+Invoke these agents at the start of the discovery process to leverage their expertise. Work collaboratively with them throughout the discovery phase.
+
 Given that initial input, do this:
 
 1. **Create Discovery Document**: Generate `artifacts/discovery.md` with the following structure:

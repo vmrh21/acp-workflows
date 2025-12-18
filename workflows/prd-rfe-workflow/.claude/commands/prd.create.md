@@ -16,6 +16,17 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 This command creates the final PRD document. It should be run after `/prd.requirements`.
 
+**IMPORTANT: Agent Collaboration**
+
+You MUST proactively invoke the following collaborating agents to ensure high-quality PRD creation:
+
+1. **@parker-product_manager.md** - For business requirements, value proposition, and ROI justification
+2. **@ryan-ux_researcher.md** - For research-informed requirements with citations from studies. Ensure all requirements reference supporting research.
+3. **@terry-technical_writer.md** - For documentation quality, clarity, and structure. This agent should review the PRD for readability and completeness.
+4. **@casey-content_strategist.md** (from bullpen) - For content architecture and standards
+
+Invoke these agents throughout the PRD creation process. Work collaboratively with them to synthesize discovery and requirements into a comprehensive, well-written PRD.
+
 1. **Load Context**:
    - Read `artifacts/discovery.md` if it exists
    - Read `artifacts/requirements.md` if it exists

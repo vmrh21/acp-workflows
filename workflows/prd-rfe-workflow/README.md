@@ -188,18 +188,29 @@ flowchart LR
 ---
 
 ### 9. `rfe.submit` - RFE Submission
-**Purpose**: Submit approved RFEs for implementation planning and team assignment
+**Purpose**: Submit approved RFEs to Jira for implementation planning and team assignment
+
+**Data Connections**:
+- **Jira MCP** - When available, automatically creates Jira tickets from RFE files with proper field mapping, dependencies, and attachments
 
 **Collaborating Agents**:
-- **@olivia-product_owner.md** (bullpen) - Backlog prioritization, sprint planning
+- **@olivia-product_owner.md** (bullpen) - Backlog prioritization, sprint planning, ticket structure
 - **@emma-engineering_manager.md** (bullpen) - Team assignment, capacity allocation, delivery coordination
 - **@parker-product_manager.md** - Roadmap alignment, stakeholder communication
 
 **Key Actions**:
+- **If Jira MCP available**: Automatically create Jira tickets from RFE files
+  - Map RFE fields to Jira fields (title, description, priority, acceptance criteria)
+  - Link dependent tickets
+  - Attach RFE markdown files
+  - Create ticket mapping document
+- **If Jira MCP not available**: Provide manual submission instructions
+  - Direct users to `artifacts/rfe-tasks/` directory
+  - Provide step-by-step instructions for creating tickets
+  - Include field mapping guidance
 - Prioritize RFEs in backlog
 - Assign to appropriate teams
 - Align with product roadmap
-- Communicate to stakeholders
 
 ---
 
@@ -218,8 +229,10 @@ artifacts/
 │   ├── RFE-001-feature-name.md
 │   ├── RFE-002-feature-name.md
 │   └── ...
+├── prioritization.md             # Prioritization and roadmap (optional)
 ├── roadmap-visual.md             # Visual roadmap (optional)
-└── review-report.md              # Quality review report
+├── review-report.md              # Quality review report
+└── jira-tickets.md               # Jira ticket mapping (created by rfe.submit)
 ```
 
 ## Getting Started
