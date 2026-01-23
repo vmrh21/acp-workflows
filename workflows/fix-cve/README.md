@@ -27,6 +27,45 @@ Perform final security verification through re-scanning and compliance checks to
 ### 7. Document
 Create comprehensive documentation of vulnerabilities, remediations, and lessons learned for audit and knowledge transfer. Optionally auto-create pull requests with `--create-pr` flag.
 
+## Two Ways to Use This Workflow
+
+### 1. 🤖 **Automated (GitHub Actions)** - Recommended for CI/CD
+
+Use the workflow as a **reusable GitHub Action** that runs automatically:
+
+```yaml
+# Add to any repository: .github/workflows/cve-scan.yml
+jobs:
+  cve-scan:
+    uses: YOUR_USERNAME/acp-workflows/.github/workflows/cve-fix-workflow.yml@main
+```
+
+**See [GITHUB_ACTION_USAGE.md](GITHUB_ACTION_USAGE.md) for complete setup guide.**
+
+**Benefits:**
+- ✅ No code duplication
+- ✅ Runs automatically (monthly, weekly, etc.)
+- ✅ Works in ANY repository with 20 lines of YAML
+- ✅ Auto-creates PRs with fixes
+
+### 2. 💻 **Interactive (Claude Code CLI)** - For manual workflow
+
+Use the workflow interactively with Claude Code:
+
+```bash
+/fix-cve.identify https://github.com/owner/repo
+/fix-cve.analyze
+/fix-cve.review-release
+# etc...
+```
+
+**Benefits:**
+- ✅ Step-by-step guidance
+- ✅ AI-powered assistance
+- ✅ Full control over each phase
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -355,6 +394,7 @@ MIT
 ## Key Documentation
 
 - **[README.md](README.md)** - Workflow overview and getting started
+- **[GITHUB_ACTION_USAGE.md](GITHUB_ACTION_USAGE.md)** - 🌟 Use workflow as GitHub Action (reusable)
 - **[TOOLS_REQUIREMENTS.md](TOOLS_REQUIREMENTS.md)** - Required tools installation guide
 - **[HOOKS_GUIDE.md](HOOKS_GUIDE.md)** - Automated testing hooks setup
 - **[FIELD_REFERENCE.md](FIELD_REFERENCE.md)** - Configuration reference
