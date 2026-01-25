@@ -150,12 +150,21 @@ Research CVE technical details, assess exploitability in your environment, evalu
 ### Phase 3: Review Release
 **Command:** `/fix-cve.review-release`
 
-Review release notes, changelogs, and documentation for proposed fixes. Automatically categorizes fixes as **safe** (patch/minor updates) or **risky** (major version changes). Identifies breaking changes, new dependencies, and compatibility issues. **Critically important:** Reports fixes with missing or incomplete documentation to help avoid risky updates.
+Review release notes, changelogs, and documentation for proposed fixes across **ALL 16+ package ecosystems**:
+- **Node.js packages** - npm audit analysis with semantic versioning comparison
+- **Python packages** - Trivy pip vulnerabilities with version analysis
+- **Ruby, Go, Java, Rust, PHP, .NET, Swift, Elixir, Dart, C/C++, Julia** - Universal Trivy analysis
+- **Container OS packages** - Detailed Alpine/Debian/Ubuntu package assessment
+- **Container base images** - Docker image vulnerability review
+
+**Comprehensive Coverage:** Every package scanned by Trivy is analyzed for version changes, categorized as safe/risky, and linked to appropriate package registries (RubyGems, crates.io, pkg.go.dev, Maven Central, NuGet, etc.)
+
+Automatically categorizes fixes as **safe** (patch/minor updates) or **risky** (major version changes). Identifies breaking changes, new dependencies, and compatibility issues. **Critically important:** Reports fixes with missing or incomplete documentation to help avoid risky updates.
 
 **Enhanced in GitHub Actions:** Displays detailed summary table showing safe fixes count, risky fixes count, missing documentation count, and any alarming patterns detected (e.g., >5 risky fixes, >3 packages with missing docs).
 
 **Output:**
-- `artifacts/fix-cve/review/release-review-YYYY-MM-DD.md` - Complete release documentation review with version comparisons
+- `artifacts/fix-cve/review/release-review-YYYY-MM-DD.md` - Complete release documentation review with version comparisons for all package types
 - `artifacts/fix-cve/review/safe-fixes-YYYY-MM-DD.md` - Safe, well-documented fixes ready for immediate application
 - `artifacts/fix-cve/review/risky-fixes-YYYY-MM-DD.md` - Risky fixes requiring careful review and manual testing
 
