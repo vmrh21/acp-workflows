@@ -150,12 +150,14 @@ Research CVE technical details, assess exploitability in your environment, evalu
 ### Phase 3: Review Release
 **Command:** `/fix-cve.review-release`
 
-Review release notes, changelogs, and documentation for proposed fixes. Identifies breaking changes, new dependencies, and compatibility issues. **Critically important:** Reports fixes with missing or incomplete documentation to help avoid risky updates.
+Review release notes, changelogs, and documentation for proposed fixes. Automatically categorizes fixes as **safe** (patch/minor updates) or **risky** (major version changes). Identifies breaking changes, new dependencies, and compatibility issues. **Critically important:** Reports fixes with missing or incomplete documentation to help avoid risky updates.
+
+**Enhanced in GitHub Actions:** Displays detailed summary table showing safe fixes count, risky fixes count, missing documentation count, and any alarming patterns detected (e.g., >5 risky fixes, >3 packages with missing docs).
 
 **Output:**
-- `artifacts/fix-cve/review/release-review-YYYY-MM-DD.md` - Release documentation review
-- `artifacts/fix-cve/review/safe-fixes-YYYY-MM-DD.md` - Safe, well-documented fixes
-- `artifacts/fix-cve/review/risky-fixes-YYYY-MM-DD.md` - Risky fixes or missing docs
+- `artifacts/fix-cve/review/release-review-YYYY-MM-DD.md` - Complete release documentation review with version comparisons
+- `artifacts/fix-cve/review/safe-fixes-YYYY-MM-DD.md` - Safe, well-documented fixes ready for immediate application
+- `artifacts/fix-cve/review/risky-fixes-YYYY-MM-DD.md` - Risky fixes requiring careful review and manual testing
 
 ### Phase 4: Remediate
 **Command:** `/fix-cve.remediate`

@@ -32,7 +32,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
 ```
 
 **That's it!** Replace `YOUR_USERNAME` with your GitHub username.
@@ -51,6 +50,40 @@ jobs:
 2. Click **"CVE Scan"** workflow
 3. Click **"Run workflow"**
 4. Watch the 7 phases execute automatically
+
+## ✨ Key Features
+
+### 📊 Enhanced Review Summary
+
+The workflow automatically analyzes all proposed fixes and provides a detailed breakdown:
+
+**Safe vs Risky Classification:**
+- **Safe Fixes:** Patch or minor version updates (e.g., 1.2.3 → 1.2.4 or 1.2.0 → 1.3.0)
+  - Unlikely to introduce breaking changes
+  - Recommended for immediate application
+  - Minimal testing required
+
+- **Risky Fixes:** Major version updates (e.g., 1.x.x → 2.0.0)
+  - May contain breaking changes
+  - Require careful review and testing
+  - May need code modifications
+
+**Alarming Pattern Detection:**
+- Warns if >5 risky fixes detected (suggests staged rollout)
+- Flags packages with missing or incomplete documentation
+- Highlights fixes requiring extra caution
+
+**Visible in:**
+- GitHub Actions summary (real-time during workflow run)
+- Pull request description (executive summary)
+- Downloadable artifacts (detailed reports)
+
+### 🎯 Automated Decision Support
+
+The workflow helps you prioritize remediation efforts:
+1. **Quick wins:** Apply safe fixes immediately
+2. **Careful review:** Schedule time for risky fixes
+3. **Research needed:** Investigate packages with missing docs
 
 ## 🔧 Configuration Options
 
@@ -79,7 +112,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
       security-events: write    # For SARIF upload
 ```
 
@@ -134,22 +166,26 @@ When the workflow runs, it automatically:
 artifacts/
 ├── reports/           # Scan results (npm, pip, trivy)
 ├── analysis/          # Severity analysis
-├── review/            # Release documentation review
+├── review/            # Release documentation review with safe/risky fix classification
+│   ├── release-review-*.md     # Complete version comparison analysis
+│   ├── safe-fixes-*.md         # Patch/minor updates ready to apply
+│   └── risky-fixes-*.md        # Major version changes requiring review
 ├── remediation/       # Fix logs
 ├── testing/           # Test results
 ├── verification/      # Re-scan results
-└── docs/              # Executive summary
+└── docs/              # Executive summary with review findings
 ```
 
 ### 2. Pull Request (if fixes available)
 - **Title:** "Security: CVE Fixes - [Month Year]"
 - **Labels:** security, cve-fix, automated
-- **Body:** Executive summary with all details
+- **Body:** Executive summary with detailed review findings including:
+  - Safe fixes count (patch/minor updates)
+  - Risky fixes count (major version changes)
+  - Alarming patterns detected
+  - Conditional recommendations based on fix types
 
-### 3. Issue (if no automatic fixes)
-- **Title:** "CVE Scan Complete - Manual Review Required"
-- **Labels:** security, manual-review
-- **Body:** Link to scan results
+**Note:** If no automatic fixes are available, the workflow completes without creating a PR. All scan results are available in the downloadable artifacts.
 
 ## 🌟 Benefits of This Approach
 
@@ -251,7 +287,6 @@ jobs:
 The workflow needs:
 - `contents: write` - To push fix branches
 - `pull-requests: write` - To create PRs
-- `issues: write` - To create issues
 
 ### Private Repositories
 
