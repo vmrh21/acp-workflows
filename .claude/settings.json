@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ -f \"$CLAUDE_PROJECT_DIR/workflows/cve-fixer/.ambient/ambient.json\" ]]; then prompt=$(jq -r '.prompt'); github_url=$(echo \"$prompt\" | grep -oE 'https://github\\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+' | head -1); local_path=$(echo \"$prompt\" | grep -oE '(/[a-zA-Z0-9/_.-]+|~/[a-zA-Z0-9/_.-]+)' | head -1); if [[ -n \"$github_url\" ]]; then if ! curl -s -o /dev/null -w \"%{http_code}\" \"$github_url\" | grep -q \"200\"; then echo \"❌ GitHub repository not accessible: $github_url\" >&2; echo \"Please check the URL and ensure the repository exists and is public\" >&2; exit 2; fi; echo \"✅ Repository validated: $github_url\"; elif [[ -n \"$local_path\" ]]; then expanded_path=\"${local_path/#\\~/$HOME}\"; if [[ ! -d \"$expanded_path\" ]]; then echo \"❌ Local path does not exist: $local_path\" >&2; exit 2; fi; if ! ls \"$expanded_path\"/{package.json,requirements.txt,pom.xml,Gemfile,go.mod,Cargo.toml} 2>/dev/null | grep -q .; then echo \"⚠️  Warning: No common dependency files found\" >&2; fi; echo \"✅ Local repository validated: $expanded_path\"; fi; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ -f \"$CLAUDE_PROJECT_DIR/workflows/cve-fixer/.ambient/ambient.json\" ]]; then cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '(npm audit|pip-audit|safety|bundle audit|cargo audit|mvn dependency)'; then if echo \"$cmd\" | grep -q \"npm audit\" && ! command -v npm &>/dev/null; then echo \"❌ npm is not installed. Install Node.js to use npm audit.\" >&2; echo \"Visit: https://nodejs.org/\" >&2; exit 2; fi; if echo \"$cmd\" | grep -q \"pip-audit\" && ! command -v pip-audit &>/dev/null; then echo \"❌ pip-audit is not installed.\" >&2; echo \"Install with: pip install pip-audit\" >&2; exit 2; fi; if echo \"$cmd\" | grep -q \"safety\" && ! command -v safety &>/dev/null; then echo \"❌ safety is not installed.\" >&2; echo \"Install with: pip install safety\" >&2; exit 2; fi; if echo \"$cmd\" | grep -q \"bundle audit\" && ! command -v bundle &>/dev/null; then echo \"❌ bundler is not installed.\" >&2; echo \"Install with: gem install bundler\" >&2; exit 2; fi; if echo \"$cmd\" | grep -q \"cargo audit\" && ! command -v cargo &>/dev/null; then echo \"❌ cargo is not installed.\" >&2; echo \"Install Rust from: https://rustup.rs/\" >&2; exit 2; fi; echo \"✅ Scanning tools verified\"; fi; fi",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "if [[ -f \"$CLAUDE_PROJECT_DIR/workflows/cve-fixer/.ambient/ambient.json\" ]]; then cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '(npm audit|pip-audit|safety|bundle audit|cargo audit)'; then user_input=$(jq -r '.user_message // \"\"' 2>/dev/null); scan_critical=false; scan_high=false; if echo \"$user_input\" | grep -qiE '(critical|all severities)'; then scan_critical=true; fi; if echo \"$user_input\" | grep -qiE '(high|all severities)'; then scan_high=true; fi; if [[ \"$scan_critical\" == false ]] && [[ \"$scan_high\" == false ]]; then scan_critical=true; scan_high=true; echo \"ℹ️  No severity specified - defaulting to Critical and High CVEs\"; fi; if echo \"$cmd\" | grep -q \"npm audit\" && ! echo \"$cmd\" | grep -qE '--audit-level'; then echo \"⚠️  Consider adding --audit-level=high for severity filtering\" >&2; fi; echo \"🎯 Scanning for Critical and High severity CVEs\"; fi; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
