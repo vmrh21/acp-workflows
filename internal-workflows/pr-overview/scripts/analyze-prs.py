@@ -392,6 +392,8 @@ def main():
         deletions = pr.get("deletions", idx_pr.get("deletions", 0)) or 0
         changed_files = pr.get("changedFiles", idx_pr.get("changedFiles", 0)) or 0
         labels = [lb.get("name", "") for lb in (pr.get("labels") or idx_pr.get("labels", []))]
+        is_fork = pr.get("isCrossRepository", idx_pr.get("isCrossRepository", False))
+        fork_owner = (pr.get("headRepositoryOwner") or idx_pr.get("headRepositoryOwner") or {}).get("login", "")
         milestone = pr.get("milestone")
         milestone_title = milestone.get("title", "") if milestone else ""
         pr_comments = pr.get("comments", [])
@@ -440,6 +442,8 @@ def main():
                 "url": url,
                 "author": author,
                 "isDraft": is_draft,
+                "is_fork": is_fork,
+                "fork_owner": fork_owner,
                 "size": size_str,
                 "size_score": size_score,
                 "updatedAt": updated_at[:10] if updated_at else "",
@@ -563,6 +567,8 @@ def main():
         "one_blocker": sum(1 for r in non_draft if r["fail_count"] == 1),
         "needs_work": sum(1 for r in non_draft if r["fail_count"] >= 2),
         "recommend_close": sum(1 for r in results if r["recommend_close"]),
+        "fork_prs": sum(1 for r in results if r["is_fork"]),
+        "fork_prs_count": sum(1 for r in results if r["is_fork"]),
     }
 
     # ── Collect PRs needing agent review ────────────────────────────────────
@@ -655,6 +661,7 @@ def main():
             "fail_count": r["fail_count"],
             "review_status": r["review_status"],
             "recommend_close": r["recommend_close"],
+            "is_fork": r["is_fork"],
         })
 
     summary = {

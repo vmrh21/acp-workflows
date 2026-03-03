@@ -44,6 +44,8 @@ Each `prs/{number}.json` file has this top-level structure:
     "title": "...",
     "author": { "login": "username" },
     "isDraft": false,
+    "isCrossRepository": true,
+    "headRepositoryOwner": { "login": "fork-owner" },
     "mergeable": "MERGEABLE",
     "updatedAt": "2026-02-20T...",
     "headRefName": "feat/branch-name",
@@ -148,7 +150,7 @@ Collect all verdicts from the parallel sub-agents and update each PR's `review_s
 
 ## Blocker Checklist
 
-For **every** open PR, evaluate each of these five categories. Each is either clear or a blocker.
+For **every** open PR, evaluate each of these six categories. Each is either clear or a blocker/warning.
 
 ### 1. CI
 
@@ -185,7 +187,13 @@ When marking a PR as FAIL in the report, include a brief explanation of the actu
 - **Clear:** at least one Jira reference found.
 - **Blocker:** no Jira reference detected. This is a hygiene issue — it should not prevent merging on its own but must be flagged.
 
-### 5. Staleness
+### 5. Fork PR — No Agent Review
+
+- Check the `is_fork` field in the per-PR analysis.
+- **Fork PRs do not receive automated agent reviews** (the Amber review bot only runs on internal branches).
+- If `is_fork` is `true`: mark as `warn` with "Fork PR — no automated agent review". This is not a merge blocker, but the report must flag it clearly so a maintainer knows manual review is required.
+
+### 6. Staleness
 
 The analysis script flags PRs older than 30 days and detects potential supersession (newer PRs with similar branches/titles). But **use your judgment** beyond the script's output — the script provides `days_since_update`, `recommend_close`, and `superseded_by` fields as signals, not final verdicts.
 
@@ -265,6 +273,8 @@ A 2-3 sentence summary at the top of the report. Mention how many PRs are ready,
 
 PRs with `fail_count == 0` and `isDraft == false` go in the condensed summary table — one row per PR. List them in the order from the `merge_order` array (smallest and least conflicting first).
 
+For fork PRs (`is_fork == true`), add "⚠️ Fork — no agent review" to the Notes column so maintainers know manual review is needed.
+
 The **Merge Test** column shows the result from `test-merge-order.sh`:
 - `merged` — PR merged cleanly on top of all previous PRs in the sequence
 - `CONFLICT` — merge failed; note the conflicting file(s)
@@ -280,6 +290,14 @@ After the table, if any PR conflicted, add a **Resolution Strategy** section exp
 ### PRs With Blockers (full tables)
 
 PRs with `fail_count > 0` and `isDraft == false` get the full blocker table. PRs flagged with `recommend_close == true` go in the "Recommend Closing" table instead — do **not** give them a full blocker breakdown.
+
+### Fork PRs
+
+PRs with `is_fork == true` go in the Fork PRs table — a separate section from the internal clean/blocker tables. This gives maintainers a consolidated view of all external contributions that need manual review.
+
+Include CI status, conflict status, and review status so maintainers can quickly see which fork PRs are otherwise ready. The `fork_owner` field shows which fork the PR came from.
+
+Fork PRs should **not** appear in the Clean PRs or PRs With Blockers sections — they get their own table regardless of blocker count.
 
 ### Recommend Closing
 

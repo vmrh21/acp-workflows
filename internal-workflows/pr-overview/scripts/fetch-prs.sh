@@ -72,7 +72,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 echo "Fetching open PRs for ${REPO}..." >&2
 
 # ── Phase 1: Fetch PR index ──────────────────────────────────────────────────
-INDEX_FIELDS="number,title,author,createdAt,updatedAt,labels,isDraft,baseRefName,headRefName,url,state,additions,deletions,changedFiles,mergeable,body"
+INDEX_FIELDS="number,title,author,createdAt,updatedAt,labels,isDraft,baseRefName,headRefName,url,state,additions,deletions,changedFiles,mergeable,body,isCrossRepository,headRepositoryOwner"
 
 gh pr list \
     --repo "$REPO" \
@@ -93,7 +93,7 @@ fi
 # Note: reviewRequests is excluded — it requires read:org scope which runners
 # typically lack.
 PR_NUMBERS=$(jq -r '.[].number' "${OUTPUT_DIR}/index.json")
-DETAIL_FIELDS="number,title,author,createdAt,updatedAt,labels,isDraft,baseRefName,headRefName,url,state,additions,deletions,changedFiles,mergeable,body,reviewDecision,statusCheckRollup,comments,assignees,milestone,files"
+DETAIL_FIELDS="number,title,author,createdAt,updatedAt,labels,isDraft,baseRefName,headRefName,url,state,additions,deletions,changedFiles,mergeable,body,reviewDecision,statusCheckRollup,comments,assignees,milestone,files,isCrossRepository,headRepositoryOwner"
 FETCHED=0
 
 for PR_NUM in $PR_NUMBERS; do
