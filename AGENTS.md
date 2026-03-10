@@ -19,11 +19,14 @@ workflows/
 │   └── [your-workflow]/   # New workflows go here
 ├── .claude/
 │   └── skills/            # Repository-level skills (workflow-creator, workflow-editor)
+├── .local/                # Local-only files (gitignored); create if needed
 ├── WORKFLOW_DEVELOPMENT_GUIDE.md
 ├── AMBIENT_JSON_SCHEMA.md
 ├── WORKSPACE_NAVIGATION_GUIDELINES.md
 └── README.md
 ```
+
+**Local-only output:** Documents that are only for the local user (e.g. status reports on work-in-progress) should go in `.local/`. The agent should create the `.local/` directory if it does not exist.
 
 ---
 
@@ -446,6 +449,7 @@ The following commands require `required_permissions: ['all']` to run outside th
 | Skills | `workflows/{name}/.claude/skills/{skill}/SKILL.md` |
 | Templates | `workflows/{name}/templates/` |
 | Artifacts (runtime) | `artifacts/{name}/` |
+| Local-only (e.g. WIP status) | `.local/` (create if needed) |
 
 ### Required ambient.json Fields
 
