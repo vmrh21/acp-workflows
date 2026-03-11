@@ -46,15 +46,17 @@
 
 ---
 
-{{#if ONE_BLOCKER_ROWS}}
+{{#if ALMOST_READY_ENTRIES}}
 ## Almost Ready ({{NEAR_COUNT}})
 
-> These PRs have exactly one blocker — easiest to unblock.
+> One thing away from merge. Agent-written context for each.
 
-| PR | Type | Author | Updated | Blocker | What's Needed |
-|---|---|---|---|---|---|
-{{#each ONE_BLOCKER_ROWS}}
-| [#{{NUMBER}}]({{URL}}) — {{TITLE}} | {{TYPE}} | {{AUTHOR}} | {{UPDATED}} | {{BLOCKER}} | {{WHAT_NEEDED}} |
+{{#each ALMOST_READY_ENTRIES}}
+**[#{{NUMBER}}]({{URL}}) — {{TITLE}}**
+{{TYPE}} · {{AUTHOR}} · {{SIZE}} · {{UPDATED}}
+{{CONTEXT}}
+**Needs:** {{WHAT_NEEDED}}
+
 {{/each}}
 
 ---

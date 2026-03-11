@@ -91,7 +91,7 @@ Use `templates/review-queue.md`. Sections:
 
 - **Ready for Review** — condensed table, priority ordered
 - **Blocked PRs** — table ordered by last updated (most recent first), limit 50. Each row shows blocker icons (CI, CONFLICT, REVIEW, STALE, OVERLAP) and a short issue snippet (e.g., "CI: e2e failing", "CHANGES_REQUESTED from @bob", "Merge conflicts")
-- **Almost Ready** — PRs with exactly 1 blocker, easiest to unblock
+- **Almost Ready** — PRs close to merge (1 mechanical blocker OR sub-agent verdict of `almost`). Write a short agent-generated blurb per PR: 1-2 sentences of context (what happened in review, what's been addressed), then a "Needs:" line with the one concrete action to unblock
 - **Recommend Closing** — stale/abandoned PRs
 - **Drafts** — WIP PRs
 - **Summary** — counts by bucket + by type
