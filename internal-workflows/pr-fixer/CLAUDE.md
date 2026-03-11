@@ -14,10 +14,10 @@ You fix a single pull request. You're given a repo and PR number.
 ## Fetch Script
 
 ```bash
-./scripts/fetch-pr.sh --repo <owner/repo> --pr <number> --with-logs
+./scripts/fetch-pr.sh --repo <owner/repo> --pr <number> --output-dir "$WORKSPACE_ROOT/artifacts/pr-fixer/<number>" --with-logs
 ```
 
-Output goes to `artifacts/{number}/`:
+Write artifacts to the **workspace root** `artifacts/` directory, not relative to the workflow directory. Output goes to `$WORKSPACE_ROOT/artifacts/pr-fixer/{number}/`:
 
 ```text
 artifacts/{number}/
