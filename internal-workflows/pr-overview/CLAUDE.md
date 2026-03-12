@@ -27,7 +27,8 @@ $WORKSPACE_ROOT/artifacts/pr-review/
 ├── index.json                     # List of all open PRs
 ├── queue.json                     # Ranked queue (written by analyze step)
 └── {number}/
-    ├── summary.json               # PR metadata, CI status, comment counts
+    ├── summary.json               # PR metadata, CI status, comment counts, commit info
+    ├── timeline.json              # Chronological interleave of commits + comments
     ├── analysis.json              # Blocker statuses, type, fail_count (written by analyze)
     ├── comments/
     │   ├── overview.json          # Comment counts, has_agent_prompts flag
@@ -49,20 +50,53 @@ Reads each `summary.json`, writes `analysis.json` per PR and `queue.json` at top
 
 ## Sub-Agent Evaluation
 
-The analyze script handles mechanical checks. Sub-agents handle the nuanced part — reading comment conversations and making judgment calls.
+The analyze script handles mechanical checks. Sub-agents produce the final verdict per PR by building a concern checklist, verifying each item, and consolidating.
 
-Spawn sub-agents in parallel (batches of ~10). Each reads `summary.json` + `comments/` for its PRs and returns:
+Spawn sub-agents in parallel (batches of ~10). Each sub-agent works through **three steps** per PR:
 
+### Step 1: Read everything and build a concern list
+
+Read these files:
+- **`summary.json`** — ground truth: current CI, mergeable, review decision, commit count
+- **`timeline.json`** — chronological interleave of commits and comments (start here for the narrative)
+- **`ci/overview.json`** — which checks are passing/failing right now
+- **`reviews/overview.json`** — who approved, who requested changes
+- **`comments/`** — full comment bodies if timeline summaries aren't enough
+
+Build a checklist of every concern raised from any source:
+- Each reviewer comment or inline thread → one concern
+- CI failures → one concern per failing check
+- Merge conflicts → one concern
+- CHANGES_REQUESTED reviews → one concern per reviewer
+- Bot review findings → one concern per finding (not one per comment — a single bot comment may raise 5 issues, or 5 bot comments may all be about the same thing)
+
+**Not every comment is a concern.** Skip:
+- Bot status comments ("CI passed", "review-queue-bot" markers)
+- Acknowledgments ("thanks", "LGTM", "looks good")
+- Questions that were answered
+- Duplicate comments about the same issue
+
+### Step 2: Verify each concern against current state
+
+For each concern on your list, check if it's still valid:
+
+- **CI comment says failing** → check `ci/overview.json` — is it actually failing now? If CI is green, mark resolved.
+- **Reviewer requested changes** → check `timeline.json` — is there a commit after the review that looks like it addresses the concern? If yes, mark as "likely addressed, needs re-approval."
+- **Bot flagged a code issue** → check `timeline.json` — was there a commit after the bot review? Check if the commit message suggests the issue was fixed. If unsure, read the full comment body from `comments/` and cross-reference with `diff.json` to see if the relevant code was changed.
+- **Merge conflicts** → check `summary.json` mergeable field — is it CONFLICTING right now?
+- **Stale concerns** → if the comment is from weeks ago and there have been multiple commits since, it's likely stale.
+
+Mark each concern as: **open** (still needs action), **resolved** (addressed), or **irrelevant** (not a real issue).
+
+### Step 3: Consolidate and produce verdict
+
+Group related concerns (e.g., 3 bot comments about the same function → 1 item). Drop resolved and irrelevant items. What's left is the real picture.
+
+Return:
 - **verdict**: ready / almost / blocked / stale
-- **review_summary**: who reviewed, what was raised, was it addressed
-- **action_needed**: what a human should do next
-- **action_owner**: who needs to act
-
-Key judgment calls:
-- Stale bot review on old commit = not blocking
-- Author pushed a fix but no re-approval = needs reviewer, not a blocker
-- "nit" with CHANGES_REQUESTED state = not a real blocker
-- Unresolved substantive disagreement = blocked
+- **review_summary**: bullet points — what's resolved, what's still open
+- **action_needed**: the one concrete thing that needs to happen next
+- **action_owner**: who needs to act (`@author`, `@reviewer-name`, `@maintainer`)
 
 ## Ranking
 
@@ -79,9 +113,23 @@ Find or create **"Review Queue"** milestone (also check for "Merge Queue"). Add 
 
 ## Blocker Comments
 
-Post **after sub-agent evaluation is complete**. Skip drafts, recommend-close PRs, and PRs unchanged since last comment.
+Post **after sub-agent evaluation is complete**.
 
-Use `<!-- review-queue-bot -->` marker. Delete old comment before posting new one.
+Use `<!-- review-queue-bot -->` marker (also check for legacy `<!-- pr-overview-bot -->`).
+
+### Clean PRs: remove old blocker comments
+
+If a PR is now clean (`fail_count == 0` after sub-agent evaluation), **delete any existing blocker comment** on it. The PR moved to "Ready for Review" — a stale blocker comment is confusing.
+
+```bash
+OLD=$(gh api "repos/{owner}/{repo}/issues/{number}/comments" \
+  --jq '.[] | select(.body | contains("<!-- review-queue-bot -->") or contains("<!-- pr-overview-bot -->")) | .id')
+[ -n "$OLD" ] && gh api -X DELETE "repos/{owner}/{repo}/issues/comments/${OLD}"
+```
+
+### Blocked PRs: post or update blocker comment
+
+Skip drafts, recommend-close PRs, and PRs unchanged since last comment.
 
 **Do NOT use a rigid blocker table.** Write a natural language comment that's actually helpful to the PR author. Use the analysis data and sub-agent verdict to write 2-4 sentences covering:
 
