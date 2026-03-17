@@ -96,7 +96,7 @@ Every tier uses the same core columns so the report is scannable at a glance:
 
 | Column | Contents |
 |--------|----------|
-| **#** | PR number |
+| **PR** | PR number linked to the PR, e.g. `[#123](https://github.com/org/repo/pull/123)` |
 | **Title** | PR title (truncated to ~50 chars if needed) |
 | **Author** | GitHub login |
 | **Last Active** | Date of most recent update (e.g. `Mar 16`) |
@@ -117,8 +117,8 @@ The **Review Issues** column is the most important — it tells the reader wheth
 
 These PRs are approved, CI green, no conflicts — just need someone to click merge.
 
-| # | Title | Author | Last Active | Mergeable | CI | Review Issues |
-|---|-------|--------|-------------|-----------|-----|---------------|
+| PR | Title | Author | Last Active | Mergeable | CI | Review Issues |
+|----|-------|--------|-------------|-----------|-----|---------------|
 | ... |
 
 ### Review Next
@@ -126,16 +126,16 @@ These PRs are approved, CI green, no conflicts — just need someone to click me
 These PRs are CI green, no conflicts, no blocking issues — they need your review.
 Sorted by priority: bug fixes first, smallest PRs first.
 
-| # | Title | Author | Last Active | Mergeable | CI | Review Issues |
-|---|-------|--------|-------------|-----------|-----|---------------|
+| PR | Title | Author | Last Active | Mergeable | CI | Review Issues |
+|----|-------|--------|-------------|-----------|-----|---------------|
 | ... |
 
 ### Needs Author Work
 
 These PRs have blockers the author needs to fix. Don't review until resolved.
 
-| # | Title | Author | Last Active | Mergeable | CI | Review Issues | Action Needed |
-|---|-------|--------|-------------|-----------|-----|---------------|---------------|
+| PR | Title | Author | Last Active | Mergeable | CI | Review Issues | Action Needed |
+|----|-------|--------|-------------|-----------|-----|---------------|---------------|
 | ... |
 
 Action Needed column: specific next step for the author.
@@ -144,14 +144,14 @@ Action Needed column: specific next step for the author.
 
 PRs with merge conflicts, no recent activity, or multiple blockers.
 
-| # | Title | Author | Last Active | Mergeable | CI | Review Issues |
-|---|-------|--------|-------------|-----------|-----|---------------|
+| PR | Title | Author | Last Active | Mergeable | CI | Review Issues |
+|----|-------|--------|-------------|-----------|-----|---------------|
 | ... |
 
 ### Dependabot / Automated
 
-| # | Title | Mergeable | CI | Review Issues |
-|---|-------|-----------|-----|---------------|
+| PR | Title | Mergeable | CI | Review Issues |
+|----|-------|-----------|-----|---------------|
 | ... |
 
 ---
