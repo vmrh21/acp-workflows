@@ -47,7 +47,13 @@ https://github.com/llamastack/llama-stack/issues/5119
 ```
 
 The workflow will assess the issue, summarize its understanding, and ask for
-your input before moving on to the next step.
+your input before moving on to the next step.  Alternatively, you could start with:
+
+```text
+/assess https://github.com/llamastack/llama-stack/issues/5119
+```
+
+That makes it more explicit that you want to start at the beginning with the assessment.
 
 ### Option 2: Speedrun a bug issue
 
@@ -77,11 +83,15 @@ all phases automatically, or leave it off to step through interactively.
 
 ## Workflow Phases
 
-The Bug Fix workflow is organized into a series of phases. In the default
-interactive mode the workflow completes one phase at a time, presents you with
-results and recommendations, and then waits for you to decide what to do next.
-You can follow the suggested order, skip ahead, or go back to revisit an
-earlier phase at any point.
+The Bug Fix workflow is organized into a series of phases. The in-product
+greeting summarizes six core phases (Assess through Document), but in practice
+the full workflow includes eight: the six core phases plus Review (an optional
+quality check) and PR (to submit the fix). All eight are described below.
+
+In the default interactive mode the workflow completes one phase at a time,
+presents you with results and recommendations, and then waits for you to decide
+what to do next. You can follow the suggested order, skip ahead, or go back to
+revisit an earlier phase at any point.
 
 Most phases produce a **report**, a Markdown file you can view in the
 **Files** section of the Explorer panel. These reports are internal to
@@ -173,6 +183,8 @@ could they be hiding problems? The review produces a verdict:
 - **Fix is inadequate.** The fix needs more work. The workflow will suggest
   going back to the Fix phase with specific guidance.
 
+**Report:** `artifacts/bugfix/review/verdict.md`
+
 ### Document
 
 **Command:** `/document`
@@ -203,7 +215,14 @@ trust the workflow to handle the full lifecycle autonomously.
 Even in speedrun mode, the workflow will stop and ask you for guidance if it
 hits a situation that needs human judgment, such as when the root cause is
 unclear, if there are multiple valid fix approaches with different trade-offs,
-or if a security concern arises.
+or if a security concern arises. It will also stop if it hits an obstacle it
+cannot get past on its own, for example if you gave it a link to a repository
+that does not exist.
+
+You can also interrupt a speedrun at any time by clicking the **stop** button
+in the chat UI. Once stopped, you can interact with the session freely: review
+what has been done so far, request changes, provide additional context, or tell
+it to continue the speedrun from where it left off.
 
 ### Why speedrun is not the default
 
@@ -244,7 +263,7 @@ As the workflow progresses, reports and other artifacts are written to the
 **Files** section of the Explorer panel. The reports are Markdown files that
 provide a detailed record of each phase's analysis, decisions, and outcomes.
 
-## Automation
+## Automation (for advanced users)
 
 Everything above describes using the Bug Fix workflow through the interactive
 UI. The Ambient Code Platform also supports triggering sessions
