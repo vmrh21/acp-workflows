@@ -251,21 +251,65 @@ UI. The Ambient Code Platform also supports triggering sessions
 programmatically, so you can incorporate bug fixing into CI/CD pipelines,
 scheduled jobs, or custom tooling.
 
+### How it works
+
+Under the hood, creating a session is a single HTTP POST to the platform's
+backend API. The request body includes the prompt, the repositories to clone,
+and an `activeWorkflow` object that tells the platform which workflow to load.
+Anything that can make an authenticated HTTP request can create a bug fix
+session.
+
+Here is the equivalent `curl` call:
+
+```bash
+curl -X POST \
+  "${ACP_API_URL}/projects/${ACP_PROJECT}/agentic-sessions" \
+  -H "Authorization: Bearer ${ACP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "initialPrompt": "/speedrun https://github.com/llamastack/llama-stack/issues/5119",
+    "activeWorkflow": {
+      "gitUrl": "https://github.com/ambient-code/workflows",
+      "branch": "main",
+      "path": "workflows/bugfix"
+    },
+    "repos": [
+      {"url": "https://github.com/llamastack/llama-stack", "branch": "main", "autoPush": true}
+    ],
+    "llmSettings": {"model": "claude-sonnet-4-5"},
+    "timeout": 1800
+  }'
+```
+
+The key fields are:
+
+- **`initialPrompt`** is what the agent sees as its first instruction. This is
+  where you pass the bug description, issue link, or `/speedrun` command.
+- **`activeWorkflow`** tells the platform which workflow to load. For the Bug
+  Fix workflow, point it at this repository with the path `workflows/bugfix`.
+  If you omit this field, the session starts with no workflow.
+- **`repos`** is an array of repositories to clone into the session. Set
+  `autoPush` to `true` if you want the agent to push its fix automatically.
+- **`llmSettings.model`** selects the model.
+- **`timeout`** is the session timeout in seconds.
+
+Authentication uses a bearer token in the `Authorization` header.
+
 ### GitHub Action
 
 The [`ambient-action`](https://github.com/ambient-code/ambient-action) GitHub
-Action (v0.0.2, beta) creates ACP sessions directly from GitHub workflows. You
-can use it to automatically kick off a bug fix session when a new issue is
-opened, when a label is applied, or on any other GitHub event.
+Action wraps this API call for use in GitHub workflows. You can use it to
+automatically kick off a bug fix session when a new issue is opened, when a
+label is applied, or on any other GitHub event.
 
 The action supports two modes:
 
-- **Fire-and-forget.** Create the session and let the workflow continue. The
-  agent runs in the background.
+- **Fire-and-forget.** Create the session and let the GitHub workflow continue.
+  The agent runs in the background.
 - **Wait-for-completion.** Block the GitHub workflow until the session finishes
   (or times out), then use the session result in subsequent steps.
 
-Here is a minimal example that triggers a bug fix speedrun whenever an issue is
+Here is an example that triggers a bug fix speedrun whenever an issue is
 labeled `auto-fix`:
 
 ```yaml
@@ -294,91 +338,29 @@ jobs:
           timeout: 30
 ```
 
-Key inputs:
-
-| Input | Required | Description |
-| --- | --- | --- |
-| `api-url` | Yes | ACP API URL |
-| `api-token` | Yes | Bearer token (store as a GitHub secret) |
-| `project` | Yes | Target workspace/project name |
-| `prompt` | Yes | Task prompt for the agent |
-| `repos` | No | JSON array of repos to clone into the session |
-| `workflow` | No | JSON workflow object (repo URL, branch, path) |
-| `model` | No | Model override (e.g., `claude-sonnet-4-20250514`) |
-| `wait` | No | Wait for the session to complete (default: `false`) |
-| `timeout` | No | Timeout in minutes (default: `30`) |
-
 When `wait` is `true`, the action outputs `session-name`, `session-uid`,
 `session-phase`, and `session-result`, which you can use in subsequent workflow
-steps.
+steps. See the
+[action repository](https://github.com/ambient-code/ambient-action) for the
+full list of inputs and outputs.
 
-### CLI (`acpctl`)
+### Other tools
 
-The `acpctl` command-line tool lets you create and manage sessions from your
-terminal. Install it from the
-[platform repository](https://github.com/ambient-code/platform) under
-`components/ambient-cli/`.
+Several other tools can manage ACP sessions, though their support for
+specifying a workflow varies:
 
-```bash
-# Log in
-acpctl login --token <your-token> --url <api-url> --project <project>
+- **[`acpctl`](https://github.com/ambient-code/platform/tree/main/components/ambient-cli)**
+  is a command-line tool for the platform. It can create sessions and check
+  their status, but does not yet have a flag for specifying a workflow.
+- **[`mcp-acp`](https://github.com/ambient-code/mcp)** is an MCP server that
+  lets you manage ACP sessions from Claude Desktop, Claude Code, or any
+  MCP-compatible client. It supports creating sessions from predefined
+  templates including bugfix.
+- **[Ambient Platform SDKs](https://github.com/ambient-code/platform/tree/main/components/ambient-sdk)**
+  provide client libraries in Go, Python, and TypeScript for programmatic
+  session management.
 
-# Create a bug fix session
-acpctl create session --name fix-issue-5119 \
-  --prompt "/speedrun https://github.com/llamastack/llama-stack/issues/5119" \
-  --repo-url https://github.com/llamastack/llama-stack \
-  --model claude-sonnet-4
-
-# Check session status
-acpctl get session <session-id>
-```
-
-Configuration can also be set through environment variables (`AMBIENT_TOKEN`,
-`AMBIENT_PROJECT`, `AMBIENT_API_URL`).
-
-### MCP Server
-
-The [`mcp-acp`](https://github.com/ambient-code/mcp) MCP server lets you
-manage ACP sessions from Claude Desktop, Claude Code, or any MCP-compatible
-client. It supports creating sessions from predefined templates (including
-bugfix), viewing logs and transcripts, and managing sessions across multiple
-clusters.
-
-Install it and add it to your Claude Desktop configuration:
-
-```json
-{
-  "mcpServers": {
-    "acp": {
-      "command": "uvx",
-      "args": ["mcp-acp"]
-    }
-  }
-}
-```
-
-Configure your cluster credentials in `~/.config/acp/clusters.yaml`. Once set
-up, you can ask Claude to create bug fix sessions, check on running sessions,
-and retrieve results, all from within your regular Claude conversation.
-
-### SDKs
-
-For deeper integration, the Ambient Platform SDK provides client libraries in
-Go, Python, and TypeScript. These are generated from the platform's OpenAPI
-specification and support the full session lifecycle.
-
-```python
-from ambient_platform.client import AmbientClient
-
-client = AmbientClient.from_env()
-session = client.sessions.create({
-    "name": "fix-issue-5119",
-    "prompt": "/speedrun https://github.com/llamastack/llama-stack/issues/5119",
-    "workflow_id": "bugfix"
-})
-```
-
-The SDKs are available in the
-[platform repository](https://github.com/ambient-code/platform) under
-`components/ambient-sdk/`. All three languages support the same environment
-variables: `AMBIENT_TOKEN`, `AMBIENT_PROJECT`, and `AMBIENT_API_URL`.
+Since the underlying mechanism is a single REST call (as shown in the `curl`
+example above), you can always fall back to a direct HTTP request from any
+language or tool if the higher-level wrappers do not yet support the options you
+need.
