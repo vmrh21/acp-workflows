@@ -20,7 +20,7 @@ encodes them into guidance files that automated workflows read before making cha
 2. Filters into CVE and bugfix buckets based on title/branch patterns
 3. Fetches targeted details per PR: files changed + review REQUEST_CHANGES comments
 4. For closed PRs: fetches the closing context to extract "don'ts"
-5. Synthesizes rules — only patterns observed in 3+ PRs are included
+5. Synthesizes rules using an adaptive threshold based on available data
 6. Generates compact guidance files (80-line cap, one rule per line)
 7. Opens a PR in the target repo adding the files
 
@@ -28,14 +28,24 @@ encodes them into guidance files that automated workflows read before making cha
 
 ### `/guidance.generate <repo-url>`
 
-Full pipeline for a fresh repo.
+Full pipeline for a fresh repo. Analyzes all recent fix PRs automatically,
+or analyze specific PRs of your choice with `--pr`.
 
 ```
 /guidance.generate https://github.com/org/repo
 /guidance.generate org/repo --cve-only
 /guidance.generate org/repo --bugfix-only
 /guidance.generate org/repo --limit 50
+/guidance.generate org/repo --pr https://github.com/org/repo/pull/42,https://github.com/org/repo/pull/87
+/guidance.generate org/repo --pr 42,87
 ```
+
+Flags:
+- `--cve-only` / `--bugfix-only`: generate only one of the two guidance files
+- `--limit N`: cap the number of PRs fetched per bucket (default: 100)
+- `--pr <refs>`: comma-separated PR URLs or numbers — skips bulk fetch and
+  analyzes only these PRs. Useful for seeding guidance from a curated set of
+  representative PRs. The generated file header records which PRs were used.
 
 Generates:
 - `.cve-fix/examples.md` — read by the CVE Fixer workflow (step 4.5)
@@ -49,7 +59,14 @@ merges new patterns, and opens a PR with the updates.
 
 ```
 /guidance.update https://github.com/org/repo
+/guidance.update org/repo --pr https://github.com/org/repo/pull/103
+/guidance.update org/repo --pr 103,104
 ```
+
+Flags:
+- `--pr <refs>`: instead of fetching all PRs since the last-analyzed date,
+  merge only the specified PRs into existing guidance. The `last-analyzed`
+  date is still updated to today.
 
 ## Generated File Format
 
@@ -84,11 +101,26 @@ Required sections (missing caused REQUEST_CHANGES in 6 PRs):
 - Don't target release branches — target main (3 cases)
 ```
 
+## Rule Threshold
+
+Rules use an adaptive threshold based on how much data is available in each bucket:
+
+| Merged PRs in bucket | Min PRs per rule |
+|----------------------|-----------------|
+| 10+                  | 3               |
+| 3–9                  | 2               |
+| 1–2                  | 1 + `WARNING: limited data` in header |
+| 0                    | File skipped entirely |
+
+This means the workflow always produces something useful, even for repos with
+few fix PRs — while flagging low-confidence output clearly.
+
 ## Token Efficiency
 
 The workflow uses a two-pass fetch strategy to minimize API calls and context size:
 
-- **Pass 1**: Lightweight metadata for all PRs (title, branch, labels, state)
+- **Pass 1**: Lightweight metadata for all PRs (title, branch, labels, state).
+  In `--pr` mode this pass is skipped — only the specified PRs are fetched.
 - **Pass 2**: Per-PR detail only for PRs in the CVE/bugfix buckets (files + reviews)
 - **Closed PRs only**: Fetch closing context (last 2 comments)
 
