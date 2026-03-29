@@ -17,7 +17,7 @@ Fetching PRs from org/repo... 147 total
 
 Fetching per-PR details... Done
 Synthesizing patterns...
-  CVE:    14 rules extracted (3-PR threshold applied)
+  CVE:    14 rules extracted (threshold: 3 PRs, or 1 if limited data)
   Bugfix: 11 rules extracted
 
 Writing guidance files... Done
@@ -322,8 +322,15 @@ Required sections (missing caused REQUEST_CHANGES in N PRs):
 ...
 ```
 
-**If a section has no data meeting the 3-PR threshold, omit that section entirely.**
+**Threshold rules — adapt based on available data:**
+- 10+ merged PRs in bucket → require 3+ PRs per rule (standard threshold)
+- 3–9 merged PRs → require 2+ PRs per rule
+- 1–2 merged PRs → require 1+ PR per rule; add a `limited-data` warning in the file header
+
+**If a section has no rules meeting the applicable threshold, omit that section entirely.**
 Do not write sections with placeholder text or "not enough data" notes — just omit them.
+
+**If a bucket has 0 merged PRs**, skip that guidance file entirely and log why.
 
 **If only one bucket had data** (e.g., no CVE PRs found), only generate the file for
 the bucket that had data. Log which file was skipped and why.
@@ -458,7 +465,7 @@ Done.
 Repository: https://github.com/<repo>
 Analyzed:   <N> CVE PRs (<M> merged, <K> closed)
             <N> Bugfix PRs (<M> merged, <K> closed)
-Rules:      <N> CVE rules, <M> bugfix rules (3-PR threshold applied)
+Rules:      <N> CVE rules, <M> bugfix rules (adaptive threshold applied)
 
 Files generated:
   artifacts/guidance/<repo-slug>/output/cve-fix-guidance.md
@@ -493,9 +500,20 @@ Artifacts: artifacts/guidance/<repo-slug>/
 
 ## Notes
 
-### Empty Buckets
-If a bucket has fewer than 3 merged PRs, skip that guidance file entirely.
-Log: "Skipping CVE guidance — only N merged CVE PRs found (minimum 3 required)."
+### Limited Data
+Never skip a guidance file just because a bucket has few merged PRs.
+Only skip if the bucket has **0 merged PRs**.
+
+For small datasets, apply an adaptive threshold and add a warning to the file header:
+
+```markdown
+<!-- last-analyzed: YYYY-MM-DD | cve-merged: 1 | cve-closed: 0 | WARNING: limited data — patterns based on 1 merged PR, verify before relying on these -->
+```
+
+This gives the workflow something to work with while signalling to reviewers
+that the file should be revisited once more PRs accumulate.
+
+Log: "CVE bucket has N merged PR(s) — generating with limited-data warning."
 
 ### Repos with No Matching PRs
 If neither bucket has data, the repo likely uses non-standard PR naming.
