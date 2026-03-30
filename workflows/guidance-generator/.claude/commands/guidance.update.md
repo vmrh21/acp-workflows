@@ -34,52 +34,103 @@ Updating files and creating PR... https://github.com/org/repo/pull/103
 ## Arguments
 
 ```
-/guidance.update <repo-url>
-/guidance.update <repo-url> --pr <url-or-number>[,<url-or-number>...]
+/guidance.update <repo-url> [<repo-url2> ...]
+/guidance.update <repo-url>[,<repo-url2>,...]
+/guidance.update <repo-url> [<repo-url2> ...] --pr <url-or-number>[,<url-or-number>...]
 ```
 
-- `repo-url`: Full GitHub URL or `org/repo` slug
-- `--pr <refs>`: Comma-separated PR URLs or numbers to merge into existing guidance
-  instead of fetching all PRs since the last-analyzed date. Accepts full URLs
-  (`https://github.com/org/repo/pull/123`) or plain numbers (`123`). The
-  `last-analyzed` date in the file header is still updated to today.
+- `repo-url`: One or more repos — space-separated or comma-separated (or both).
+  Each repo is updated independently and gets its own PR.
+- `--pr <refs>`: Comma-separated PR URLs or numbers. Full URLs are applied only to
+  their matching repo. Plain numbers are applied to all repos. The `last-analyzed`
+  date is still updated to today in all files.
 
 ## Process
 
 ### 1. Parse Arguments and Validate
 
 ```bash
+# Validate gh auth once
 gh auth status || { echo "ERROR: gh not authenticated. Run 'gh auth login'"; exit 1; }
 
-gh repo view "$REPO" --json name > /dev/null 2>&1 || {
-  echo "ERROR: Cannot access $REPO"
-  exit 1
+# Normalize repo args: replace commas with spaces, strip GitHub URL prefix, deduplicate
+normalize_repo() {
+  local REF="$1"
+  if [[ "$REF" =~ github\.com/([a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+) ]]; then
+    echo "${BASH_REMATCH[1]}"
+  elif [[ "$REF" =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
+    echo "$REF"
+  else
+    echo "WARNING: Cannot parse repo '$REF' — skipping" >&2
+    echo ""
+  fi
 }
 
-REPO_SLUG=$(echo "$REPO" | tr '/' '-')
+REPOS=()
+for RAW in $(echo "$REPO_ARGS" | tr ',' ' '); do
+  NORMALIZED=$(normalize_repo "$RAW")
+  [ -n "$NORMALIZED" ] && REPOS+=("$NORMALIZED")
+done
 
-# Parse --pr flag: extract PR numbers from URLs or plain numbers
-SPECIFIC_PR_NUMBERS=""
+REPOS=($(printf '%s\n' "${REPOS[@]}" | awk '!seen[$0]++'))
+
+if [ ${#REPOS[@]} -eq 0 ]; then
+  echo "ERROR: No valid repository references provided."
+  exit 1
+fi
+
+echo "Repos to process (${#REPOS[@]}):"
+for R in "${REPOS[@]}"; do echo "  - $R"; done
+
+# Parse --pr: full URLs map to their repo; plain numbers apply to all repos
+declare -A REPO_SPECIFIC_PRS
+GLOBAL_PR_NUMBERS=""
+
 if [ -n "$PR_REFS" ]; then
-  IFS=',' read -ra PR_LIST <<< "$PR_REFS"
+  IFS=',' read -ra PR_LIST <<< "$(echo "$PR_REFS" | tr ' ' ',')"
   for PR_REF in "${PR_LIST[@]}"; do
     PR_REF=$(echo "$PR_REF" | tr -d ' ')
-    if [[ "$PR_REF" =~ github\.com/[^/]+/[^/]+/pull/([0-9]+) ]]; then
-      SPECIFIC_PR_NUMBERS="$SPECIFIC_PR_NUMBERS ${BASH_REMATCH[1]}"
+    if [[ "$PR_REF" =~ github\.com/([a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+)/pull/([0-9]+) ]]; then
+      PR_REPO="${BASH_REMATCH[1]}"
+      PR_NUM="${BASH_REMATCH[2]}"
+      REPO_SPECIFIC_PRS["$PR_REPO"]="${REPO_SPECIFIC_PRS[$PR_REPO]:-} $PR_NUM"
     elif [[ "$PR_REF" =~ ^[0-9]+$ ]]; then
-      SPECIFIC_PR_NUMBERS="$SPECIFIC_PR_NUMBERS $PR_REF"
+      GLOBAL_PR_NUMBERS="$GLOBAL_PR_NUMBERS $PR_REF"
     else
       echo "WARNING: Could not parse PR reference '$PR_REF' — skipping"
     fi
   done
-  SPECIFIC_PR_NUMBERS=$(echo "$SPECIFIC_PR_NUMBERS" | tr -s ' ' | sed 's/^ //')
-  echo "Manual PR mode: merging PR(s) $SPECIFIC_PR_NUMBERS into existing guidance"
+  GLOBAL_PR_NUMBERS=$(echo "$GLOBAL_PR_NUMBERS" | tr -s ' ' | sed 's/^ //')
 fi
 
-mkdir -p "artifacts/guidance/$REPO_SLUG/raw"
-mkdir -p "artifacts/guidance/$REPO_SLUG/analysis"
-mkdir -p "artifacts/guidance/$REPO_SLUG/output"
-mkdir -p "/tmp/guidance-gen/$REPO_SLUG"
+PR_RESULTS=()
+FAILED_REPOS=()
+```
+
+---
+> **Steps 2–9 repeat for each repo in `${REPOS[@]}`.**
+
+```bash
+for REPO in "${REPOS[@]}"; do
+  echo ""
+  echo "=== $REPO ==="
+
+  if ! gh repo view "$REPO" --json name > /dev/null 2>&1; then
+    echo "  ERROR: Cannot access $REPO — skipping"
+    FAILED_REPOS+=("$REPO -> cannot access repository")
+    continue
+  fi
+
+  REPO_SLUG=$(echo "$REPO" | tr '/' '-')
+
+  SPECIFIC_PR_NUMBERS="${REPO_SPECIFIC_PRS[$REPO]:-} $GLOBAL_PR_NUMBERS"
+  SPECIFIC_PR_NUMBERS=$(echo "$SPECIFIC_PR_NUMBERS" | tr -s ' ' | sed 's/^ //')
+  [ -n "$SPECIFIC_PR_NUMBERS" ] && echo "  Manual PR mode: PR(s) $SPECIFIC_PR_NUMBERS"
+
+  mkdir -p "artifacts/guidance/$REPO_SLUG/raw"
+  mkdir -p "artifacts/guidance/$REPO_SLUG/analysis"
+  mkdir -p "artifacts/guidance/$REPO_SLUG/output"
+  mkdir -p "/tmp/guidance-gen/$REPO_SLUG"
 ```
 
 ### 2. Read Existing Guidance Files from Repository
@@ -480,25 +531,39 @@ PR_URL=$(gh pr create \
 echo "PR created: $PR_URL"
 ```
 
-### 9. Cleanup
+### 9. Cleanup (per repo)
 
 ```bash
-cd /
-rm -rf "/tmp/guidance-gen/$REPO_SLUG"
+  cd /
+  rm -rf "/tmp/guidance-gen/$REPO_SLUG"
+
+  if [ -n "${PR_URL:-}" ]; then
+    PR_RESULTS+=("$REPO -> $PR_URL")
+  else
+    FAILED_REPOS+=("$REPO -> PR creation failed (see output above)")
+  fi
+
+done  # end of per-repo loop
 ```
 
 ### 10. Print Summary
 
 ```
-Done.
+Done. Processed <N> repo(s).
 
-Repository:  https://github.com/<repo>
-New PRs:     <N> CVE PRs, <M> bugfix PRs (since <last-date>)
-Changes:     <N> new rules, <M> counts updated, <K> contradictions flagged
+org/repo1
+  New PRs analyzed: 8 CVE, 12 bugfix (since 2026-01-15)
+  Changes: 2 new rules, 3 counts updated, 1 contradiction flagged
+  PR: https://github.com/org/repo1/pull/103
 
-PR: <full URL>
+org/repo2
+  No guidance files found — run /guidance.generate first
+  SKIPPED
 
-Artifacts: artifacts/guidance/<repo-slug>/
+org/repo3 — FAILED: cannot access repository
+
+---
+PRs created: <N>  |  Skipped: <M>  |  Failed: <K>
 ```
 
 ## Output
@@ -513,17 +578,18 @@ Artifacts: artifacts/guidance/<repo-slug>/
 
 ## Success Criteria
 
-- [ ] Existing guidance files found and last-analyzed date extracted
-- [ ] New PRs fetched since last-analyzed date
-- [ ] Per-PR details fetched for new PRs
-- [ ] New patterns synthesized (new rules, updated counts, contradictions flagged)
-- [ ] Existing files updated in-place (no rewrites, structure preserved)
-- [ ] No existing rules were dropped — only additions and count updates
-- [ ] Files exceeding 80 lines are flagged in PR description (not silently truncated)
-- [ ] Header timestamps updated
-- [ ] PR created in target repo
-- [ ] /tmp cleaned up
-- [ ] PR URL printed to console
+- [ ] All repos parsed from input (space and comma separated)
+- [ ] gh auth validated once before the loop
+- [ ] Each repo processed independently — one failure does not abort others
+- [ ] Per-repo: existing guidance files found and last-analyzed date extracted
+- [ ] Per-repo: new PRs fetched (date-based or --pr specific)
+- [ ] Per-repo: new patterns synthesized (new rules, updated counts, contradictions flagged)
+- [ ] Per-repo: files updated in-place, no existing rules dropped
+- [ ] Per-repo: files exceeding 80 lines flagged in PR description
+- [ ] Per-repo: header timestamps updated
+- [ ] Per-repo: PR created in target repo
+- [ ] Per-repo: /tmp cleaned up
+- [ ] Final summary lists all repos with PR URLs, skips, and failures
 
 ## Notes
 

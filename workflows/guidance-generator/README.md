@@ -32,20 +32,20 @@ Full pipeline for a fresh repo. Analyzes all recent fix PRs automatically,
 or analyze specific PRs of your choice with `--pr`.
 
 ```
-/guidance.generate https://github.com/org/repo
-/guidance.generate org/repo --cve-only
-/guidance.generate org/repo --bugfix-only
-/guidance.generate org/repo --limit 50
-/guidance.generate org/repo --pr https://github.com/org/repo/pull/42,https://github.com/org/repo/pull/87
-/guidance.generate org/repo --pr 42,87
+/guidance.generate org/repo1 org/repo2 org/repo3
+/guidance.generate org/repo1,org/repo2,org/repo3
+/guidance.generate org/repo1 org/repo2 --cve-only
+/guidance.generate org/repo1,org/repo2 --pr 42,https://github.com/org/repo2/pull/87
 ```
 
+Each repo is processed independently and gets its own PR. One repo failing does
+not stop the others. A summary of all PR URLs is printed at the end.
+
 Flags:
-- `--cve-only` / `--bugfix-only`: generate only one of the two guidance files
-- `--limit N`: cap the number of PRs fetched per bucket (default: 100)
-- `--pr <refs>`: comma-separated PR URLs or numbers — skips bulk fetch and
-  analyzes only these PRs. Useful for seeding guidance from a curated set of
-  representative PRs. The generated file header records which PRs were used.
+- `--cve-only` / `--bugfix-only`: generate only one of the two guidance files (all repos)
+- `--limit N`: cap PRs fetched per bucket per repo (default: 100)
+- `--pr <refs>`: comma-separated PR URLs or numbers — skips bulk fetch. Full URLs
+  are applied only to their matching repo; plain numbers apply to all repos.
 
 Generates:
 - `.cve-fix/examples.md` — read by the CVE Fixer workflow (step 4.5)
@@ -58,15 +58,17 @@ Reads the `last-analyzed` date from existing files, fetches only newer PRs,
 merges new patterns, and opens a PR with the updates.
 
 ```
-/guidance.update https://github.com/org/repo
-/guidance.update org/repo --pr https://github.com/org/repo/pull/103
-/guidance.update org/repo --pr 103,104
+/guidance.update org/repo1 org/repo2
+/guidance.update org/repo1,org/repo2
+/guidance.update org/repo1 org/repo2 --pr 103,https://github.com/org/repo2/pull/104
 ```
 
+Each repo is updated independently and gets its own PR.
+
 Flags:
-- `--pr <refs>`: instead of fetching all PRs since the last-analyzed date,
-  merge only the specified PRs into existing guidance. The `last-analyzed`
-  date is still updated to today.
+- `--pr <refs>`: merge only the specified PRs instead of fetching all PRs since
+  the last-analyzed date. Full URLs apply to their matching repo; plain numbers
+  apply to all repos. The `last-analyzed` date is still updated to today.
 
 ## Generated File Format
 
