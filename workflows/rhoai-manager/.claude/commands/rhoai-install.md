@@ -125,6 +125,23 @@ oc whoami &>/dev/null || die "Not logged into an OpenShift cluster"
 echo "Logged in as: $(oc whoami)"
 echo "Cluster: $(oc whoami --show-server)"
 
+# Check if ODH is installed — RHOAI and ODH cannot coexist
+if oc get csv -n openshift-operators 2>/dev/null | grep -q opendatahub-operator; then
+  ODH_CSV=$(oc get csv -n openshift-operators --no-headers 2>/dev/null | grep opendatahub-operator | awk '{print $1}')
+  echo ""
+  echo "ERROR: ODH (Open Data Hub) is installed on this cluster ($ODH_CSV)"
+  echo ""
+  echo "RHOAI and ODH cannot coexist — they both manage the same"
+  echo "cluster-scoped DataScienceCluster CRD and overlapping operators."
+  echo ""
+  echo "To install RHOAI, first uninstall ODH:"
+  echo "  /odh-uninstall"
+  echo ""
+  echo "Then re-run:"
+  echo "  /rhoai-install"
+  die "ODH must be uninstalled before installing RHOAI"
+fi
+
 # Verify RHOAI is not already installed
 if oc get csv -n redhat-ods-operator 2>/dev/null | grep -q rhods-operator; then
   die "RHOAI is already installed. Use /rhoai-update to update existing installation."

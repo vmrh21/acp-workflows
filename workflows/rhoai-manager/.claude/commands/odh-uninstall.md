@@ -164,8 +164,19 @@ echo "To install ODH again: /odh-install"
 echo "To install RHOAI:     /rhoai-install"
 ```
 
+## Switching from ODH to RHOAI
+
+If you want to install RHOAI after ODH, use the **default** uninstall (no flags):
+
+```bash
+/odh-uninstall
+/rhoai-install
+```
+
+Do **not** use `keep-crds` or `keep-all` when switching to RHOAI — RHOAI installs its own versions of the shared CRDs (`DataScienceCluster`, etc.) and leftover ODH CRDs will conflict.
+
 ## Notes
 
-- ODH and RHOAI share cluster-scoped CRDs — uninstalling ODH clears the path for RHOAI installation
+- ODH and RHOAI share cluster-scoped CRDs (`DataScienceCluster`, `DSCInitialization`) — they cannot coexist
 - If the `opendatahub` namespace gets stuck on termination, the command attempts to remove its finalizers automatically
-- User data (notebooks, pipelines, models) in data science project namespaces is deleted by default — use `keep-all` to preserve it
+- User data (notebooks, pipelines, models) in data science project namespaces is deleted by default — use `keep-all` to preserve it (note: ODH user data is not compatible with RHOAI namespaces)
