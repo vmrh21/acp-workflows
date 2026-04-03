@@ -75,12 +75,29 @@ oc whoami &>/dev/null || { echo "ERROR: Not logged into OpenShift cluster"; exit
 echo "Logged in as: $(oc whoami)"
 echo "Cluster: $(oc whoami --show-server)"
 
-# Check not already installed
+# Check if RHOAI is installed — RHOAI and ODH cannot coexist
+if oc get csv -n redhat-ods-operator 2>/dev/null | grep -q rhods-operator; then
+  RHOAI_CSV=$(oc get csv -n redhat-ods-operator --no-headers 2>/dev/null | grep rhods-operator | awk '{print $1}')
+  echo ""
+  echo "ERROR: RHOAI is installed on this cluster ($RHOAI_CSV)"
+  echo ""
+  echo "RHOAI and ODH cannot coexist — they both manage the same"
+  echo "cluster-scoped DataScienceCluster CRD and overlapping operators."
+  echo ""
+  echo "To install ODH, first uninstall RHOAI:"
+  echo "  /rhoai-uninstall"
+  echo ""
+  echo "Then re-run:"
+  echo "  /odh-install"
+  exit 1
+fi
+
+# Check if ODH is already installed
 if oc get csv -n openshift-operators 2>/dev/null | grep -q opendatahub-operator; then
   echo "ERROR: ODH already installed. Use /odh-update to update."
   exit 1
 fi
-echo "No existing ODH installation detected"
+echo "No existing ODH or RHOAI installation detected — proceeding"
 ```
 
 ### Step 3: Create CatalogSource
