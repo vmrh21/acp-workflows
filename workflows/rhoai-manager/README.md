@@ -1,30 +1,39 @@
 # RHOAI Manager
 
-Comprehensive workflow for managing the complete lifecycle of Red Hat OpenShift AI: installation, updates, version detection, and uninstallation.
+Comprehensive workflow for managing the complete lifecycle of Red Hat OpenShift AI (RHOAI) and Open Data Hub (ODH): installation, updates, version detection, and uninstallation.
 
 ## Overview
 
 This workflow provides an AI-powered pipeline for:
-- Installing RHOAI from scratch on OpenShift clusters
-- Updating RHOAI to latest nightly builds
-- Detecting version and build information
-- Completely uninstalling RHOAI when needed
+- Installing RHOAI or ODH from scratch on OpenShift clusters
+- Updating RHOAI or ODH to latest nightly builds
+- Detecting RHOAI version and build information
+- Completely uninstalling RHOAI or ODH when needed
 - Managing cluster connections and authentication
+- Safely switching between RHOAI and ODH
+
+## Important: RHOAI and ODH Cannot Coexist
+
+RHOAI and ODH share cluster-scoped CRDs (`DataScienceCluster`, `DSCInitialization`) and overlapping operators. They **cannot** be installed on the same cluster simultaneously. Both `/rhoai-install` and `/odh-install` detect the other and block with a clear error.
 
 ## Structure
 
 ```
 workflows/rhoai-manager/
 ├── .ambient/
-│   └── ambient.json            # Workflow configuration
+│   └── ambient.json              # Workflow configuration
 ├── .claude/
 │   └── commands/
-│       ├── oc-login.md          # OpenShift cluster login command
-│       ├── rhoai-install.md     # RHOAI installation command
-│       ├── rhoai-version.md     # RHOAI version detection command
-│       ├── rhoai-update.md      # RHOAI update command
-│       └── rhoai-uninstall.md   # RHOAI uninstall command
-└── README.md                    # This file
+│       ├── oc-login.md           # OpenShift cluster login
+│       ├── rhoai-install.md      # RHOAI installation
+│       ├── rhoai-version.md      # RHOAI version detection
+│       ├── rhoai-update.md       # RHOAI update to latest nightly
+│       ├── rhoai-uninstall.md    # RHOAI uninstall
+│       ├── odh-install.md        # ODH installation
+│       ├── odh-update.md         # ODH update to latest nightly
+│       ├── odh-uninstall.md      # ODH uninstall
+│       └── odh-pr-tracker.md     # Track ODH PRs in RHOAI builds
+└── README.md                     # This file
 ```
 
 ## Commands
@@ -33,159 +42,177 @@ workflows/rhoai-manager/
 
 Login to OpenShift cluster using credentials from Ambient session.
 
-**What it does:**
-- Checks for required credentials (OCP_SERVER, OCP_USERNAME, OCP_PASSWORD)
-- Verifies `oc` CLI is installed
-- Executes login to the cluster
-- Verifies connection and displays cluster info
+**Usage:** `/oc-login`
 
-**Usage:**
-```
-/oc-login
-```
+**Required env vars:** `OCP_SERVER`, `OCP_USERNAME`, `OCP_PASSWORD`
 
-Or simply ask:
-- "Login to my cluster"
-- "Connect to OpenShift"
-- "Login to OCP"
-
-**Required Environment Variables:**
-- `OCP_SERVER` - OpenShift cluster API URL (e.g., `https://api.cluster.example.com:6443`)
-- `OCP_USERNAME` - Your OpenShift username
-- `OCP_PASSWORD` - Your OpenShift password
+---
 
 ### /rhoai-install
 
 Install RHOAI from scratch on an OpenShift cluster.
 
-**What it does:**
-- Sets up OLM catalog source (dev or GA production)
-- Creates operator namespace and subscription
-- Waits for ClusterServiceVersion (CSV) to be ready
-- Creates DataScienceCluster with component configuration
-- Patches component states (Managed/Removed) as needed
-- Verifies all components are healthy and reconciled
-- Provides detailed installation summary
-
 **Usage:**
 ```bash
-# Development/Nightly builds (default)
-/rhoai-install                                    # Latest dev catalog
-/rhoai-install channel=beta                       # Dev catalog, beta channel
-/rhoai-install image=quay.io/modh/rhoai-catalog:latest-release-3.5
-
-# GA Production releases
-/rhoai-install catalog=redhat-operators           # GA catalog, stable channel
-/rhoai-install catalog=redhat-operators channel=fast     # GA catalog, fast channel
+/rhoai-install                                    # Latest dev nightly (default)
+/rhoai-install channel=stable-3.4                 # GA stable-3.4 channel
+/rhoai-install catalog=redhat-operators           # GA production catalog
 ```
 
-**Parameters:**
-- `catalog` - Catalog source (`rhoai-catalog-dev` for nightly, `redhat-operators` for GA)
-- `channel` - Subscription channel (`beta`, `fast`, or `stable`)
-- `image` - Custom catalog image (only for `rhoai-catalog-dev`)
-
-Or simply ask:
-- "Install RHOAI on the cluster"
-- "Deploy RHOAI from production catalog"
-- "Set up RHOAI for testing"
-
-**Prerequisites:**
-- OpenShift cluster (version 4.12+)
-- Logged into cluster with admin permissions (use `/oc-login`)
-- No existing RHOAI installation
+**Prerequisite:** No existing RHOAI **or ODH** installation (detected automatically).
 
 **What gets deployed:**
-- **Operator namespace**: `redhat-ods-operator`
-- **Application namespace**: `redhat-ods-applications`
-- **Monitoring namespace**: `redhat-ods-monitoring`
-- **DataScienceCluster**: Custom resource managing all RHOAI components
-- **Component operators**: Dashboard, Workbenches, Model Serving, Pipelines, etc.
+- Operator namespace: `redhat-ods-operator`
+- Application namespace: `redhat-ods-applications`
+- DataScienceCluster with all components
 
-**Note:** Defaults to `rhoai-catalog-dev` for nightly builds. Use `catalog=redhat-operators` for GA production releases.
-
-### /rhoai-version
-
-Detect RHOAI version and build information.
-
-**What it does:**
-- Checks RHOAI operator subscription and ClusterServiceVersion
-- Reports DataScienceCluster status and component states
-- Lists all component images with SHA256 digests
-- Provides comprehensive version summary
-
-**Usage:**
-```
-/rhoai-version
-```
-
-Or simply ask:
-- "What version of RHOAI is installed?"
-- "Check RHOAI version"
-- "Show me RHOAI build info"
-
-**Note:** You must be logged into the cluster first (use `/oc-login`)
+---
 
 ### /rhoai-update
 
-Updates RHOAI to the latest nightly build.
-
-**What it does:**
-- Checks current RHOAI version and component states
-- Updates the OLM catalog source to latest nightly
-- Monitors the operator upgrade process
-- Handles special scenarios:
-  - **Scenario E**: Forced subscription reinstall when component images update without CSV version change
-  - Channel preservation across updates
-  - Component state preservation (Managed/Removed)
-- Verifies component reconciliation
-- Reports final status with before/after comparison
+Update RHOAI to the latest nightly or GA build.
 
 **Usage:**
+```bash
+/rhoai-update                    # Pull latest (preserves current channel)
+/rhoai-update 3.4 -c stable-3.4  # Update with explicit channel
 ```
-/rhoai-update
-```
 
-Or simply ask:
-- "Update RHOAI to latest nightly"
-- "Upgrade to RHOAI 3.4 nightly"
-- "Update RHOAI"
+**Features:** Preserves channel, auto-detects newer component images, forces reinstall if needed.
 
-**Note:** You must be logged into the cluster first (use `/oc-login`)
+---
 
-**Advanced Features:**
-- Detects when component images have newer builds without CSV version changes
-- Automatically triggers forced reinstall in these cases
-- Preserves DataScienceCluster component configuration across updates
-- Waits for all components to reconcile before completing
+### /rhoai-version
+
+Check installed RHOAI version, CSV, catalog digest, and all component image SHAs.
+
+**Usage:** `/rhoai-version`
+
+---
 
 ### /rhoai-uninstall
 
 Completely uninstall RHOAI from an OpenShift cluster.
 
-**What it does:**
-- Removes RHOAI operator and subscriptions
-- Deletes custom resources (DataScienceCluster, DSCInitialization, etc.)
-- Cleans up webhooks and finalizers
-- Removes RHOAI namespaces
-- Deletes CRDs (optional)
-- Cleans up user data science projects (optional)
-
 **Usage:**
-```
-/rhoai-uninstall              # Standard forceful uninstall
-/rhoai-uninstall graceful     # Graceful uninstall followed by cleanup
-/rhoai-uninstall keep-crds    # Keep CRDs installed
+```bash
+/rhoai-uninstall              # Remove everything (use this before installing ODH)
+/rhoai-uninstall graceful     # Graceful then forceful cleanup
+/rhoai-uninstall keep-crds    # Keep CRDs
 /rhoai-uninstall keep-all     # Keep CRDs and user resources
 ```
 
-Or simply ask:
-- "Uninstall RHOAI from the cluster"
-- "Remove RHOAI completely"
-- "Clean up RHOAI installation"
+---
 
-**Warning:** This will delete all RHOAI resources including user workbenches, models, and data. Backup important work first.
+### /odh-install
 
-**Note:** You must be logged into the cluster first (use `/oc-login`) and have cluster-admin permissions.
+Install Open Data Hub (ODH) nightly on an OpenShift cluster.
+
+**Usage:**
+```bash
+/odh-install                  # odh-stable-nightly catalog, fast channel (default)
+/odh-install channel=fast image=quay.io/opendatahub/opendatahub-operator-catalog:latest
+```
+
+**Prerequisite:** No existing ODH **or RHOAI** installation (detected automatically).
+
+**Key differences from RHOAI:**
+
+| | RHOAI | ODH |
+|-|-------|-----|
+| Package | `rhods-operator` | `opendatahub-operator` |
+| Operator namespace | `redhat-ods-operator` | `openshift-operators` |
+| App namespace | `redhat-ods-applications` | `opendatahub` |
+| Default channel | `stable-3.4` / `beta` | `fast` |
+| Nightly tag | `rhoai-3.4` (floating) | `odh-stable-nightly` (floating) |
+
+---
+
+### /odh-update
+
+Update ODH to the latest nightly build.
+
+**Usage:**
+```bash
+/odh-update                   # Pull latest odh-stable-nightly
+/odh-update image=quay.io/opendatahub/opendatahub-operator-catalog:latest
+```
+
+**Note:** ODH nightlies typically bump the CSV version daily, so OLM auto-upgrades without a forced reinstall in most cases.
+
+---
+
+### /odh-uninstall
+
+Completely uninstall ODH from an OpenShift cluster.
+
+**Usage:**
+```bash
+/odh-uninstall              # Remove everything (use this before installing RHOAI)
+/odh-uninstall keep-crds    # Keep CRDs
+/odh-uninstall keep-all     # Keep CRDs and user resources
+```
+
+**Note:** Use the default (no flags) when switching to RHOAI — `keep-crds` or `keep-all` would leave conflicting CRDs.
+
+---
+
+### /odh-pr-tracker
+
+Track whether an ODH pull request has been included in the latest RHOAI build.
+
+**Usage:** `/odh-pr-tracker <pr-number>`
+
+---
+
+## Typical Workflows
+
+### Fresh RHOAI Installation
+```
+1. /oc-login
+2. /rhoai-install
+3. /rhoai-version
+```
+
+### Fresh ODH Installation
+```
+1. /oc-login
+2. /odh-install
+3. /rhoai-version   # (check via version command — ODH has no dedicated version command yet)
+```
+
+### Pull Latest Nightly (RHOAI)
+```
+1. /oc-login
+2. /rhoai-update
+3. /rhoai-version
+```
+
+### Pull Latest Nightly (ODH)
+```
+1. /oc-login
+2. /odh-update
+```
+
+### Switch from RHOAI to ODH
+```
+1. /oc-login
+2. /rhoai-uninstall          # Standard uninstall (removes CRDs)
+3. /odh-install
+```
+
+### Switch from ODH to RHOAI
+```
+1. /oc-login
+2. /odh-uninstall            # Standard uninstall (removes CRDs)
+3. /rhoai-install
+```
+
+### Decommission
+```
+1. /oc-login
+2. /rhoai-uninstall   # or /odh-uninstall
+```
 
 ## Prerequisites
 
@@ -201,71 +228,6 @@ Or simply ask:
 
 All artifacts are stored in `artifacts/rhoai-manager/`:
 
-- `reports/*.md` - Installation and update reports with version changes
+- `reports/*.md` - Installation and update reports
 - `version/*.md` - Version detection summaries
 - `logs/*.log` - Detailed execution logs
-
-## Typical Workflows
-
-### Fresh Installation
-```
-1. /oc-login              # Connect to cluster
-2. /rhoai-install         # Install RHOAI from scratch
-3. /rhoai-version         # Verify installation
-```
-
-### Regular Updates
-```
-1. /oc-login              # Connect to cluster
-2. /rhoai-version         # Check current version
-3. /rhoai-update          # Update to latest nightly
-4. /rhoai-version         # Verify new version
-```
-
-### Decommissioning
-```
-1. /oc-login              # Connect to cluster
-2. /rhoai-uninstall       # Remove RHOAI completely
-```
-
-## GitHub Actions Integration
-
-This workflow is designed to run via GitHub Actions with Ambient:
-
-```yaml
-- name: Update RHOAI to Latest Nightly
-  uses: ambient-code/ambient-action@v0.0.2
-  with:
-    api-token: ${{ secrets.AMBIENT_API_TOKEN }}
-    workflow: workflows/rhoai-manager
-    prompt: Update RHOAI to the latest nightly build
-```
-
-## Technical Details
-
-### Catalog Source
-- Uses `rhoai-catalog-dev` for nightly builds
-- Image: `quay.io/modh/rhoai-catalog:latest-release-3.4`
-- Updates trigger operator upgrades automatically
-
-### Component Management
-- DataScienceCluster manages component states (Managed/Removed)
-- Component states preserved across updates
-- Individual component image tracking with SHA digests
-
-### Update Scenarios
-The workflow handles several update scenarios:
-- **Normal CSV upgrade**: Operator version changes
-- **Forced reinstall**: Component images update without CSV version change
-- **Channel migration**: Updates preserve subscription channel
-- **Catalog refresh**: Forces OLM to re-evaluate available updates
-
-## Future Enhancements
-
-- [ ] Automated test suite execution after updates
-- [ ] Test result parsing and analysis
-- [ ] JIRA integration for issue updates
-- [ ] Slack/email notifications
-- [ ] Rollback capabilities
-- [ ] Pre-upgrade validation checks
-- [ ] Multi-cluster support
