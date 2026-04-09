@@ -561,7 +561,64 @@ else
 fi
 ```
 
-### Step 14: Verify Update
+### Step 14: Patch AutoML and AutoRAG UI to ODH Main Images
+
+The RHOAI nightly build pins the automl-ui and autorag-ui containers to a specific digest from the RHOAI build pipeline. To test the latest ODH main branch changes for these components, we override them with the floating `main` tag images from `quay.io/opendatahub`.
+
+This is done by:
+1. Patching the CSV's `spec.relatedImages` so the operator knows about the override
+2. Directly patching the dashboard deployment containers so the new images take effect immediately (OLM may otherwise revert the CSV patch on reconciliation)
+
+```bash
+AUTOML_IMAGE="quay.io/opendatahub/odh-mod-arch-automl:main"
+AUTORAG_IMAGE="quay.io/opendatahub/odh-mod-arch-autorag:main"
+
+CSV_NAME=$(oc get csv -n redhat-ods-operator -l operators.coreos.com/rhods-operator.redhat-ods-operator \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+echo "Patching CSV $CSV_NAME with ODH main images for AutoML and AutoRAG..."
+
+# Patch CSV relatedImages for automl and autorag
+oc patch csv "$CSV_NAME" -n redhat-ods-operator --type=json -p "[
+  {\"op\": \"replace\", \"path\": \"/spec/relatedImages/$(
+    oc get csv "$CSV_NAME" -n redhat-ods-operator -o json \
+      | jq '.spec.relatedImages | to_entries[] | select(.value.name=="odh_mod_arch_automl_image") | .key'
+  )\", \"value\": {\"name\": \"odh_mod_arch_automl_image\", \"image\": \"$AUTOML_IMAGE\"}},
+  {\"op\": \"replace\", \"path\": \"/spec/relatedImages/$(
+    oc get csv "$CSV_NAME" -n redhat-ods-operator -o json \
+      | jq '.spec.relatedImages | to_entries[] | select(.value.name=="odh_mod_arch_autorag_image") | .key'
+  )\", \"value\": {\"name\": \"odh_mod_arch_autorag_image\", \"image\": \"$AUTORAG_IMAGE\"}}
+]" 2>/dev/null && echo "✅ CSV relatedImages patched" || echo "⚠️  CSV patch skipped (non-critical)"
+
+# Patch the dashboard deployment containers directly — this is what actually changes the running pods
+echo "Patching rhods-dashboard deployment containers..."
+oc patch deployment rhods-dashboard -n redhat-ods-applications --type=json -p "[
+  {\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/$(
+    oc get deployment rhods-dashboard -n redhat-ods-applications -o json \
+      | jq '.spec.template.spec.containers | to_entries[] | select(.value.name=="automl-ui") | .key'
+  )/image\", \"value\": \"$AUTOML_IMAGE\"},
+  {\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/$(
+    oc get deployment rhods-dashboard -n redhat-ods-applications -o json \
+      | jq '.spec.template.spec.containers | to_entries[] | select(.value.name=="autorag-ui") | .key'
+  )/image\", \"value\": \"$AUTORAG_IMAGE\"}
+]" || die "Failed to patch dashboard deployment with ODH main images"
+
+echo "✅ Dashboard deployment patched:"
+echo "   automl-ui:  $AUTOML_IMAGE"
+echo "   autorag-ui: $AUTORAG_IMAGE"
+
+# Wait for rollout to complete
+echo "Waiting for dashboard rollout..."
+oc rollout status deployment/rhods-dashboard -n redhat-ods-applications --timeout=120s || \
+  echo "⚠️  Rollout did not complete within 120s, check pod status manually"
+```
+
+**Why patch both the CSV and the deployment?**
+- The CSV patch records the intent (useful for auditing and if the operator re-reads images)
+- The deployment patch is what actually restarts the pods with the new images immediately
+- The operator may reconcile the CSV back over time; if that happens, re-run this step or add an annotation to prevent reconciliation
+
+### Step 15: Verify Update
 
 ```bash
 echo ""
@@ -571,6 +628,13 @@ echo "=== Update Summary ==="
 echo ""
 echo "CSV:"
 oc get csv -n redhat-ods-operator 2>/dev/null | grep rhods-operator || echo "  WARNING: CSV not found"
+
+# Show actual automl/autorag images in the running deployment
+echo ""
+echo "AutoML/AutoRAG images (running):"
+oc get deployment rhods-dashboard -n redhat-ods-applications -o json 2>/dev/null | \
+  jq -r '.spec.template.spec.containers[] | select(.name == "automl-ui" or .name == "autorag-ui") | "  \(.name): \(.image)"' \
+  2>/dev/null || echo "  Dashboard deployment not found"
 
 # Show Dashboard URL
 echo ""
@@ -594,6 +658,7 @@ The command creates a report at `artifacts/rhoai-update/reports/update-report-[t
 - Component image comparison results
 - Whether forced reinstall was performed
 - DataScienceCluster status
+- AutoML/AutoRAG image overrides applied
 - Dashboard URL
 
 ## Usage Examples
@@ -630,6 +695,9 @@ Or simply ask:
 
 **Problem:** Dashboard shows old features after update
 **Solution:** Feature flags are re-applied in Step 13, dashboard pod is restarted
+
+**Problem:** AutoML/AutoRAG containers reverted to RHOAI nightly image after operator reconciliation
+**Solution:** Re-run Step 14 to re-apply the ODH main image patch. This is expected behavior since OLM manages the operator lifecycle.
 
 ## Next Steps
 
