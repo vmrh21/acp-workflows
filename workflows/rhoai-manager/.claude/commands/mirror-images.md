@@ -21,18 +21,26 @@ The user must provide (or you must ask for):
 | `RHOAI_TEST_BASTION` | Bastion registry host:port for the rhoai-test cluster | `bastion.ods-dis-rhoai-test.aws.rh-ods.com:8443` |
 | `BASTION_USER` | Registry username for both bastions | `mir_reg` |
 | `BASTION_PASSWORD` | Registry password for both bastions | (prompt securely) |
-| `RHOAI_VERSION` | RHOAI version label (for naming) | `3.4` |
 | `EXCLUDE_PATTERNS` | Optional image name patterns to skip | `workbench,training,pipeline-runtime,spark` |
+
+**Auto-detected (no user input needed):**
+
+| Value | Source |
+|-------|--------|
+| `RHOAI_VERSION` | Extracted from the CSV version on the connected cluster (e.g., `rhods-operator.3.4.0` -> `3.4`) |
 
 ## Process
 
 ### Phase 1: Extract Image List from Connected Cluster
 
-1. **Get RHOAI CSV (ClusterServiceVersion)**
+1. **Get RHOAI CSV and detect version**
 
    ```bash
    CSV_NAME=$(oc get csv -n redhat-ods-operator -o name | grep rhods-operator)
+   RHOAI_VERSION=$(oc get "$CSV_NAME" -n redhat-ods-operator -o jsonpath='{.spec.version}' | grep -oE '^[0-9]+\.[0-9]+')
    ```
+
+   This auto-detects the deployed version (e.g., `3.4`) and uses it for naming artifact files.
 
 2. **Extract relatedImages from CSV**
 
