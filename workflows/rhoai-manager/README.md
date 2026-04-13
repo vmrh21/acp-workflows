@@ -33,7 +33,9 @@ workflows/rhoai-manager/
 │       ├── odh-update.md         # ODH update to latest nightly
 │       ├── odh-uninstall.md      # ODH uninstall
 │       ├── odh-pr-tracker.md     # Track ODH PRs in RHOAI builds
-│       └── mirror-images.md     # Mirror images to disconnected bastions
+│       ├── mirror-images.md     # Mirror images to disconnected bastions
+│       ├── rhoai-disconnected.md # Install/update RHOAI on disconnected clusters
+│       └── rhoai-verify.md      # Post-install/update verification tests
 └── README.md                     # This file
 ```
 
@@ -168,20 +170,84 @@ Track whether an ODH pull request has been included in the latest RHOAI build.
 
 ### /mirror-images
 
-Mirror all RHOAI operator and component images from a connected cluster to both disconnected cluster bastion registries.
+Mirror all images needed for a complete disconnected RHOAI deployment from a connected cluster to one or more bastion registries. Includes RHOAI operator, all components, and infrastructure services.
 
 **Usage:** `/mirror-images`
 
 **What it does:**
 
-1. Extracts images from connected cluster's CSV relatedImages + running pods
-2. Builds a combined pull secret with source registry and bastion credentials
-3. Deploys a mirror pod on the connected cluster (fast AWS-internal transfers)
-4. Mirrors all images to both bastions with `--keep-manifest-list=true --filter-by-os=".*"`
-5. Tags destinations with `:latest` to prevent Quay tagless manifest GC
-6. Verifies every image on both bastions, reports failures
+1. Extracts images from connected cluster's CSV relatedImages (all of them, no exclusions by default)
+2. Scans all relevant namespaces for running pod images (minio, keycloak, postgres, milvus, vLLM, service mesh, etc.)
+3. Captures catalog source images and module architecture images
+4. Builds a combined pull secret with source registry and bastion credentials
+5. Deploys a mirror pod on the connected cluster (fast AWS-internal transfers)
+6. Mirrors all images to each bastion with `--keep-manifest-list=true --filter-by-os=".*"`
+7. Tags destinations with `:latest` to prevent Quay tagless manifest GC
+8. Verifies every image on each bastion, reports failures by category
+9. Generates IDMS (ImageDigestMirrorSet) YAML for the disconnected cluster
 
-**Required inputs:** Both bastion addresses, bastion credentials, RHOAI version, optional exclude patterns.
+**Required inputs:** Bastion registry address(es), bastion credentials. RHOAI version is auto-detected. Optional exclude patterns (empty by default).
+
+---
+
+### /rhoai-disconnected
+
+Install or update RHOAI on a disconnected (air-gapped) OpenShift cluster using a digest-pinned FBC catalog image.
+
+**Usage:**
+```bash
+/rhoai-disconnected fbc=quay.io/rhoai/rhoai-fbc-fragment@sha256:fe1157d5...
+/rhoai-disconnected install fbc=quay.io/rhoai/rhoai-fbc-fragment@sha256:...
+/rhoai-disconnected update fbc=quay.io/rhoai/rhoai-fbc-fragment@sha256:...
+/rhoai-disconnected fbc=quay.io/rhoai/rhoai-fbc-fragment@sha256:... bastion=host:8443 channel=stable-3.4
+```
+
+**Required input:** `fbc=<image@sha256:digest>` — the FBC catalog image (must be already mirrored to bastion via `/mirror-images`).
+
+**Optional inputs:** `bastion=<host:port>` (auto-detected from IDMS), `channel=<channel>` (default: `stable-3.4`), `install`/`update` (auto-detected).
+
+**What it does:**
+
+1. Auto-detects install vs update mode and bastion registry from IDMS
+2. **Pre-flight verification**: checks that the FBC image and ALL relatedImages exist on the bastion before proceeding
+3. Verifies IDMS entries cover all required source registries
+4. Creates/updates OLM CatalogSource, namespace, OperatorGroup, and Subscription
+5. For updates: forces CSV reinstall to pick up new component images
+6. Waits for operator CSV and DataScienceCluster to reach Ready state
+7. Post-install health check: detects ImagePullBackOff and CrashLoopBackOff pods
+8. Applies known workarounds (podToPodTLS bug, persistenceagent TLS cert)
+9. Configures dashboard feature flags (automl, autorag, genAiStudio)
+
+**Prerequisite:** All images mirrored to bastion (use `/mirror-images` on connected cluster first). IDMS configured on disconnected cluster.
+
+---
+
+### /rhoai-verify
+
+Run post-install/update verification tests to confirm all RHOAI components are healthy and functional.
+
+**Usage:**
+```bash
+/rhoai-verify              # Run all tests (default: full)
+/rhoai-verify quick        # Operator + DSC + pod health only
+/rhoai-verify full         # All tests including smoke tests
+```
+
+**What it checks:**
+
+1. Operator health — CSV phase, subscription state, CatalogSource readiness
+2. DataScienceCluster — phase, component conditions
+3. Pod health — scans all RHOAI namespaces for ImagePullBackOff, CrashLoopBackOff, not-ready containers
+4. Dashboard — deployment readiness, route existence, HTTP response
+5. Data Science Pipelines — DSP operator, DSPA health, podToPodTLS status
+6. Workbenches — notebook controller, ODH notebook controller, workbench namespace
+7. Model Serving — KServe controller, ModelMesh controller, ServingRuntimes, InferenceServices
+8. Model Registry — operator readiness, registry namespace
+9. TrustyAI / EvalHub — TrustyAI operator, EvalHub namespace/pods/route
+10. Dependent operators — service mesh, serverless, pipelines, cert-manager
+11. Disconnected checks (auto-detected) — IDMS entries, cluster-wide ImagePullBackOff scan
+
+**Output:** Report at `artifacts/rhoai-manager/reports/verify-[timestamp].md` with PASS/FAIL/WARN summary and troubleshooting guidance.
 
 ---
 
@@ -191,7 +257,7 @@ Mirror all RHOAI operator and component images from a connected cluster to both 
 ```
 1. /oc-login
 2. /rhoai-install
-3. /rhoai-version
+3. /rhoai-verify
 ```
 
 ### Fresh ODH Installation
@@ -205,7 +271,7 @@ Mirror all RHOAI operator and component images from a connected cluster to both 
 ```
 1. /oc-login
 2. /rhoai-update
-3. /rhoai-version
+3. /rhoai-verify
 ```
 
 ### Pull Latest Nightly (ODH)
@@ -231,7 +297,14 @@ Mirror all RHOAI operator and component images from a connected cluster to both 
 ### Mirror Images to Disconnected Clusters
 ```
 1. /oc-login           # Connect to the connected cluster
-2. /mirror-images      # Mirror all RHOAI images to both bastions
+2. /mirror-images      # Mirror all RHOAI + infrastructure images to bastion(s)
+```
+
+### Install/Update RHOAI on Disconnected Cluster
+```
+1. /oc-login                     # Connect to the disconnected cluster
+2. /rhoai-disconnected fbc=quay.io/rhoai/rhoai-fbc-fragment@sha256:...
+3. /rhoai-verify                 # Verify everything is healthy
 ```
 
 ### Decommission
