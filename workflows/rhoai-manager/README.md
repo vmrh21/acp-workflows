@@ -11,6 +11,7 @@ This workflow provides an AI-powered pipeline for:
 - Completely uninstalling RHOAI or ODH when needed
 - Managing cluster connections and authentication
 - Safely switching between RHOAI and ODH
+- Overriding specific component images to use ODH main branch builds for testing
 
 ## Important: RHOAI and ODH Cannot Coexist
 
@@ -35,7 +36,8 @@ workflows/rhoai-manager/
 │       ├── odh-pr-tracker.md     # Track ODH PRs in RHOAI builds
 │       ├── mirror-images.md     # Mirror images to disconnected bastions
 │       ├── rhoai-disconnected.md # Install/update RHOAI on disconnected clusters
-│       └── rhoai-verify.md      # Post-install/update verification tests
+│       ├── rhoai-verify.md      # Post-install/update verification tests
+│       └── use-odh-main.md      # Override component images to ODH main branch
 └── README.md                     # This file
 ```
 
@@ -251,6 +253,31 @@ Run post-install/update verification tests to confirm all RHOAI components are h
 
 ---
 
+### /use-odh-main
+
+Override specific component images in the RHOAI/ODH operator CSV to use ODH main branch builds for testing.
+
+**Usage:**
+```bash
+/use-odh-main odh-mod-arch-automl odh-mod-arch-autorag   # Override to main branch
+/use-odh-main --list                                      # List all component images
+/use-odh-main --tag feature-branch odh-mod-arch-automl    # Use custom tag
+/use-odh-main --registry quay.io/myorg odh-mod-arch-automl # Use custom registry
+```
+
+**What it does:**
+
+1. Finds the matching `relatedImages` entries and env vars in the operator CSV
+2. Patches them to use `quay.io/opendatahub/<component>:main` (or custom registry/tag)
+3. Restarts the operator to pick up new env vars
+4. Waits for component deployments to reconcile with new images
+5. Verifies running pods are pulling the correct images
+6. Checks for ImagePullBackOff errors
+
+**Important:** Overrides are **not persistent** — running `/rhoai-update` or `/odh-update` resets all images to catalog versions.
+
+---
+
 ## Typical Workflows
 
 ### Fresh RHOAI Installation
@@ -305,6 +332,13 @@ Run post-install/update verification tests to confirm all RHOAI components are h
 1. /oc-login                     # Connect to the disconnected cluster
 2. /rhoai-disconnected fbc=quay.io/rhoai/rhoai-fbc-fragment@sha256:...
 3. /rhoai-verify                 # Verify everything is healthy
+```
+
+### Test ODH Main Branch Components on RHOAI
+```
+1. /oc-login
+2. /use-odh-main odh-mod-arch-automl odh-mod-arch-autorag
+3. /rhoai-verify         # Verify everything is healthy with new images
 ```
 
 ### Decommission
