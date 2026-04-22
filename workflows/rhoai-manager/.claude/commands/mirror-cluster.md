@@ -101,7 +101,86 @@ oc get pods --all-namespaces -o json 2>/dev/null \
   | sort -u >> /tmp/mirror-modelcar-images.txt
 ```
 
-#### 2e. Extra images (if provided)
+#### 2e. GPU serving runtime images (setup mode only)
+
+The CUDA-enabled vLLM image (`vllm-cuda-rhel9`) is used for GPU-based model serving and is NOT included in the RHOAI CSV relatedImages. Extract it from ServingRuntime specs and running pods that use GPU resources:
+
+```bash
+# Get vllm-cuda images from ServingRuntime specs
+oc get servingruntimes --all-namespaces -o json 2>/dev/null \
+  | jq -r '.items[].spec.containers[]?.image // empty' \
+  | grep -E 'vllm-cuda' \
+  | sort -u > /tmp/mirror-gpu-serving-images.txt
+
+# Also capture from running pods with GPU resource requests
+oc get pods --all-namespaces -o json 2>/dev/null \
+  | jq -r '.items[] | select(.spec.containers[]?.resources.limits["nvidia.com/gpu"] != null) | .spec.containers[].image' \
+  | sort -u >> /tmp/mirror-gpu-serving-images.txt
+
+sort -u -o /tmp/mirror-gpu-serving-images.txt /tmp/mirror-gpu-serving-images.txt
+GPU_SERVE_COUNT=$(wc -l < /tmp/mirror-gpu-serving-images.txt)
+echo "GPU serving runtime images: $GPU_SERVE_COUNT"
+```
+
+**CUDA image version must match the GPU driver's CUDA toolkit.** Use the compatibility table in step 2f below to pick a compatible `vllm-cuda-rhel9` tag. On FIPS-enabled clusters, only `registry.redhat.io/rhaiis/vllm-cuda-rhel9` (RHEL9-based) passes the FIPS self-test — Docker Hub `vllm/vllm-openai` will crash with `FATAL FIPS SELFTEST FAILURE`.
+
+#### 2f. NVIDIA GPU Operator images (setup mode only)
+
+Extract all relatedImages from the GPU Operator CSV for the target channel. These images come from `nvcr.io/nvidia` and `registry.connect.redhat.com/nvidia` and include the driver, device plugin, DCGM, container toolkit, etc. (~16 images).
+
+```bash
+# Detect current GPU Operator channel and CSV
+GPU_CSV_NAME=$(oc get csv -n nvidia-gpu-operator -o name 2>/dev/null | grep gpu-operator-certified)
+GPU_CHANNEL=$(oc get sub gpu-operator-certified -n nvidia-gpu-operator -o jsonpath='{.spec.channel}' 2>/dev/null)
+
+if [ -n "$GPU_CSV_NAME" ]; then
+  echo "GPU Operator CSV: $GPU_CSV_NAME (channel: $GPU_CHANNEL)"
+
+  # Extract relatedImages from the GPU Operator CSV
+  oc get "$GPU_CSV_NAME" -n nvidia-gpu-operator -o json \
+    | jq -r '.spec.relatedImages[].image' \
+    | sort -u > /tmp/mirror-gpu-operator-images.txt
+
+  # Also extract from the target channel's packagemanifest if upgrading
+  # This captures images for a newer channel than currently installed
+  if [ -n "${GPU_TARGET_CHANNEL:-}" ]; then
+    oc get packagemanifest gpu-operator-certified -n openshift-marketplace -o json \
+      | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+for ch in d['status']['channels']:
+    if ch['name'] == '${GPU_TARGET_CHANNEL}':
+        csv_desc = ch.get('currentCSVDesc',{})
+        related = csv_desc.get('relatedImages',[])
+        for img in related:
+            if isinstance(img, dict):
+                print(img.get('image',''))
+            else:
+                print(img)
+" >> /tmp/mirror-gpu-operator-images.txt
+    sort -u -o /tmp/mirror-gpu-operator-images.txt /tmp/mirror-gpu-operator-images.txt
+  fi
+
+  GPU_COUNT=$(wc -l < /tmp/mirror-gpu-operator-images.txt)
+  echo "GPU Operator images to mirror: $GPU_COUNT"
+else
+  echo "No GPU Operator found, skipping"
+  touch /tmp/mirror-gpu-operator-images.txt
+fi
+```
+
+**GPU Operator version compatibility note:** The GPU driver version determines CUDA compatibility. When upgrading the GPU Operator to support newer vLLM CUDA images, check the version matrix:
+
+| GPU Operator | Driver | CUDA | Compatible vllm-cuda-rhel9 |
+|-------------|--------|------|---------------------------|
+| v24.9 | 550.x | 12.4 | 3.0.0 only |
+| v25.3 | 570-580.x | 12.8-13.0 | 3.2.0+ |
+| v25.10 | 575.x | 12.8+ | 3.2.0+ |
+| v26.3 | 580.x | 13.0 | all versions |
+
+**Important:** GPU Operator images use `nvcr.io/nvidia` as the source registry, which is blocked on disconnected clusters. The IDMS must map `nvcr.io/nvidia/*` to `bastion/nvidia/*`. Driver images are multi-arch manifest lists — always use `skopeo copy --all` to preserve digests correctly.
+
+#### 2g. Extra images (if provided)
 
 If the user specified `extras=`, add those to the list:
 
@@ -112,7 +191,7 @@ for img in ${EXTRAS//,/ }; do
 done
 ```
 
-#### 2f. Merge, deduplicate, and filter
+#### 2h. Merge, deduplicate, and filter
 
 Combine all lists, deduplicate, and apply exclusion filters:
 
@@ -121,12 +200,14 @@ cat /tmp/mirror-csv-images.txt \
     /tmp/mirror-fbc-images.txt \
     /tmp/mirror-pod-images.txt \
     /tmp/mirror-modelcar-images.txt \
+    /tmp/mirror-gpu-serving-images.txt \
+    /tmp/mirror-gpu-operator-images.txt \
     /tmp/mirror-extras.txt 2>/dev/null \
   | sort -u \
   | grep -v '^$' > /tmp/mirror-all-images-raw.txt
 
 # Filter out platform images and apply exclude patterns
-grep -vE '(^bastion\.|nvcr\.io/nvidia|openshift-release-dev)' /tmp/mirror-all-images-raw.txt \
+grep -vE '(^bastion\.|openshift-release-dev)' /tmp/mirror-all-images-raw.txt \
   > /tmp/mirror-all-images.txt
 
 # Apply user exclusions
@@ -498,7 +579,8 @@ Mirrors everything needed for a brand-new disconnected cluster:
 |----------|--------|-------------|
 | RHOAI Operator + Components (~124) | `registry.redhat.io/rhoai/*` | CSV relatedImages |
 | FBC Fragment | `quay.io/rhoai/rhoai-fbc-fragment` | CatalogSource |
-| vLLM Serving Runtimes | `registry.redhat.io/rhaiis/*` | CSV relatedImages |
+| vLLM Serving Runtimes (CPU) | `registry.redhat.io/rhaiis/vllm-*-rhel9` | CSV relatedImages |
+| vLLM CUDA Runtime (GPU) | `registry.redhat.io/rhaiis/vllm-cuda-rhel9` | ServingRuntime specs + GPU pods |
 | MinIO | `quay.io/minio/minio` | Running pods |
 | Milvus | `docker.io/milvusdb/milvus` | Running pods |
 | PostgreSQL | `registry.redhat.io/rhel9/postgresql-*` | Running pods |
@@ -513,6 +595,7 @@ Mirrors everything needed for a brand-new disconnected cluster:
 | Base images (UBI, nginx) | `registry.redhat.io/ubi9/*` | Running pods |
 | NFD Operator | `registry.redhat.io/openshift4/ose-cluster-nfd-*` | Running pods |
 | OpenShift Platform | `registry.redhat.io/openshift4/ose-oauth-proxy-*` | Running pods |
+| NVIDIA GPU Operator (~16) | `nvcr.io/nvidia/*`, `registry.connect.redhat.com/nvidia/*` | GPU Operator CSV relatedImages |
 | Extra images | User-provided `extras=` parameter | User input |
 
 ### Update Mode (`mode=update`)
@@ -551,6 +634,9 @@ Key IDMS entries needed on the disconnected cluster (generated automatically in 
 | `quay.io/opendatahub` | `bastion/opendatahub` |
 | `docker.io/milvusdb` | `bastion/milvusdb` |
 | `docker.io/curlimages` | `bastion/curlimages` |
+| `nvcr.io/nvidia` | `bastion/nvidia` |
+| `nvcr.io/nvidia/cloud-native` | `bastion/nvidia/cloud-native` |
+| `registry.connect.redhat.com/nvidia` | `bastion/nvidia` |
 
 **cert-manager gotcha:** The IDMS for `registry.redhat.io/cert-manager` must cover both `cert-manager-operator-rhel9` AND `jetstack-cert-manager-rhel9`. These are different image names under the same registry prefix — a single IDMS entry for `registry.redhat.io/cert-manager` covers both.
 
@@ -563,6 +649,8 @@ Key IDMS entries needed on the disconnected cluster (generated automatically in 
 - **Large images**: Some images are 5-8 GB (automl, autorag, vllm-cuda, ta-lmes-job). The 4-hour pod deadline accommodates this.
 - **Storage**: Plan for ~150-200GB on the bastion registry for a full setup mirror.
 - **Docker Hub images**: `milvusdb/milvus` and `curlimages/curl` may require Docker Hub credentials in the pull secret. The script warns if these fail.
+- **GPU Operator images**: Driver images from `nvcr.io/nvidia` are multi-arch manifest lists — always use `skopeo copy --all` with tag-based destinations (not digest-based). Copying with `--remove-signatures` to a digest destination fails with `manifest invalid`. Mirror driver images to tag-based refs like `bastion/nvidia/driver:v25.3-drv1`.
+- **GPU Operator upgrade**: When upgrading the GPU Operator channel (e.g., `v24.9` → `v25.3`), mirror images from BOTH the current and target channel CSVs. Set `GPU_TARGET_CHANNEL` before running step 2e. After mirroring, change the Subscription channel on the disconnected cluster. If the upgrade controller panics (nil pointer at `upgrade_controller.go`), delete the old driver daemonset to force the operator to recreate it.
 
 ## Output
 
