@@ -635,7 +635,19 @@ Key IDMS entries needed on the disconnected cluster (generated automatically in 
 | `docker.io/milvusdb` | `bastion/milvusdb` |
 | `docker.io/curlimages` | `bastion/curlimages` |
 | `nvcr.io/nvidia` | `bastion/nvidia` |
-| `nvcr.io/nvidia/cloud-native` | `bastion/nvidia/cloud-native` |
+| `nvcr.io/nvidia/gpu-operator` | `bastion/nvidia/gpu-operator` |
+| `nvcr.io/nvidia/driver` | `bastion/nvidia/driver` |
+| `nvcr.io/nvidia/k8s-device-plugin` | `bastion/nvidia/k8s-device-plugin` |
+| `nvcr.io/nvidia/k8s/dcgm-exporter` | `bastion/nvidia/k8s/dcgm-exporter` |
+| `nvcr.io/nvidia/k8s/container-toolkit` | `bastion/nvidia/k8s/container-toolkit` |
+| `nvcr.io/nvidia/cloud-native/dcgm` | `bastion/nvidia/cloud-native/dcgm` |
+| `nvcr.io/nvidia/cloud-native/gpu-operator-validator` | `bastion/nvidia/cloud-native/gpu-operator-validator` |
+| `nvcr.io/nvidia/cloud-native/k8s-driver-manager` | `bastion/nvidia/cloud-native/k8s-driver-manager` |
+| `nvcr.io/nvidia/cloud-native/k8s-mig-manager` | `bastion/nvidia/cloud-native/k8s-mig-manager` |
+| `nvcr.io/nvidia/cloud-native/vgpu-device-manager` | `bastion/nvidia/cloud-native/vgpu-device-manager` |
+| `nvcr.io/nvidia/cloud-native/gdrdrv` | `bastion/nvidia/cloud-native/gdrdrv` |
+| `nvcr.io/nvidia/cuda` | `bastion/nvidia/cuda` |
+| `nvcr.io/nvidia/kubevirt-gpu-device-plugin` | `bastion/nvidia/kubevirt-gpu-device-plugin` |
 | `registry.connect.redhat.com/nvidia` | `bastion/nvidia` |
 
 **cert-manager gotcha:** The IDMS for `registry.redhat.io/cert-manager` must cover both `cert-manager-operator-rhel9` AND `jetstack-cert-manager-rhel9`. These are different image names under the same registry prefix — a single IDMS entry for `registry.redhat.io/cert-manager` covers both.
@@ -649,8 +661,13 @@ Key IDMS entries needed on the disconnected cluster (generated automatically in 
 - **Large images**: Some images are 5-8 GB (automl, autorag, vllm-cuda, ta-lmes-job). The 4-hour pod deadline accommodates this.
 - **Storage**: Plan for ~150-200GB on the bastion registry for a full setup mirror.
 - **Docker Hub images**: `milvusdb/milvus` and `curlimages/curl` may require Docker Hub credentials in the pull secret. The script warns if these fail.
-- **GPU Operator images**: Driver images from `nvcr.io/nvidia` are multi-arch manifest lists — always use `skopeo copy --all` with tag-based destinations (not digest-based). Copying with `--remove-signatures` to a digest destination fails with `manifest invalid`. Mirror driver images to tag-based refs like `bastion/nvidia/driver:v25.3-drv1`.
-- **GPU Operator upgrade**: When upgrading the GPU Operator channel (e.g., `v24.9` → `v25.3`), mirror images from BOTH the current and target channel CSVs. Set `GPU_TARGET_CHANNEL` before running step 2e. After mirroring, change the Subscription channel on the disconnected cluster. If the upgrade controller panics (nil pointer at `upgrade_controller.go`), delete the old driver daemonset to force the operator to recreate it.
+- **Manifest list digest requires a tag push (registry:2)**: Docker registry:2 does NOT store manifest lists pushed by digest alone. `skopeo copy --all docker://src@sha256:abc docker://bastion/repo@sha256:abc` reports success, but the digest is not retrievable — the bastion returns `manifest unknown`. **Always push to a TAG first**: `skopeo copy --all docker://src@sha256:abc docker://bastion/repo:v25.3.4`. The registry stores the manifest list under the tag, and then the original digest becomes accessible via the content-addressable store. This applies to ALL multi-arch images (GPU Operator, ModelCar, drivers, etc.).
+- **GPU Operator images**: All `nvcr.io/nvidia/*` images are multi-arch manifest lists. Always use `skopeo copy --all` with **tag-based destinations** (not digest-based). Example: `skopeo copy --all docker://src-bastion/nvidia/gpu-operator@sha256:abc docker://dst-bastion/nvidia/gpu-operator:v25.3.4`. Each relatedImage from the GPU Operator CSV needs its own tag. Use version-suffixed tags for driver variants: `nvidia/driver:v25.3.4-580`, `nvidia/driver:v25.3.4-570`, `nvidia/driver:v25.3.4-535`.
+- **GPU Operator upgrade**: When upgrading the GPU Operator channel (e.g., `v24.9` → `v25.3`), mirror images from BOTH the current and target channel CSVs. Set `GPU_TARGET_CHANNEL` before running step 2e. After mirroring, change the Subscription channel on the disconnected cluster. If the upgrade controller panics (nil pointer at `upgrade_controller.go:171` — empty upgrade state labels on nodes), manually delete the old driver daemonset pods one at a time (the daemonset uses `OnDelete` strategy, so pods won't restart automatically). The new pods will come up with the updated driver image.
+- **`rhaiis/vllm-cuda-rhel9` requires RHAIIS entitlement**: `registry.redhat.io/rhaiis/vllm-cuda-rhel9` is the RHOAI-patched vLLM with ModernBert support and FIPS compliance. It is NOT pullable with standard Red Hat subscription credentials — it requires a specific RHAIIS entitlement. If you cannot pull from registry.redhat.io, **mirror bastion-to-bastion** from a reference cluster's bastion that already has it. Use the `pull-secret-bundle` from the `image-mirror` namespace which has auth for both bastions: `skopeo copy --all --src-tls-verify=false --dest-tls-verify=false --authfile=/auth/.dockerconfigjson docker://src-bastion/rhaiis/vllm-cuda-rhel9:latest docker://dst-bastion/rhaiis/vllm-cuda-rhel9:latest`. The `rhaii` namespace (without the trailing `s`) is a different product — don't confuse them.
+- **ModelCar images and IDMS/ITMS**: ModelCar images (`quay.io/redhat-ai-services/modelcar-catalog`) are referenced by digest in model configs. They need both an IDMS entry (for digest-based pulls) and optionally an ITMS entry (for tag-based fallback). When mirroring, push to both a tag and verify the digest resolves: `skopeo copy --all docker://quay.io/redhat-ai-services/modelcar-catalog@sha256:abc docker://bastion/redhat-ai-services/modelcar-catalog:llama-3-1-8b`.
+- **CUDA driver compatibility**: The vLLM CUDA image version must match the GPU driver's CUDA toolkit. `rhaiis/vllm-cuda-rhel9:latest` (v0.13.0+rhai11) requires CUDA 13.0 (GPU Operator v25.3+, driver 580.x). Using it with CUDA 12.4 (GPU Operator v24.9, driver 550.x) will fail with `CUDA driver version is insufficient`. Also set `VLLM_TARGET_DEVICE=cuda` env var on vLLM pods using v0.13.0+ to avoid "Only one platform plugin can be activated" errors.
+- **Bastion-to-bastion mirroring**: When images can't be pulled from public registries (entitlement issues, rate limits), use a pod on a connected cluster that has network access to both bastions. The `image-mirror` namespace on autorag clusters typically has a `pull-secret-bundle` secret with auth for multiple bastions. Run `skopeo copy` from a pod in that namespace.
 
 ## Output
 
